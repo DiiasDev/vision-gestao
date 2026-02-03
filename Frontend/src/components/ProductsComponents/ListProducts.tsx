@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   Text,
   TextInput,
@@ -22,7 +23,11 @@ type ListProductsProps = {
 const parseNumber = (value: unknown) => {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  const normalized = String(value).replace(/\./g, "").replace(",", ".");
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : raw;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 };
@@ -45,6 +50,24 @@ const getInitials = (name?: string | null) => {
   const parts = name.trim().split(" ").filter(Boolean);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const getImageUri = (imagem?: string | null) => {
+  if (!imagem) return null;
+  const trimmed = String(imagem).trim();
+  if (!trimmed) return null;
+  if (
+    trimmed.startsWith("data:image/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("file://") ||
+    trimmed.startsWith("content://")
+  ) {
+    return trimmed;
+  }
+  const looksLikeBase64 =
+    trimmed.length > 40 && /^[A-Za-z0-9+/=\s]+$/.test(trimmed);
+  return looksLikeBase64 ? `data:image/jpeg;base64,${trimmed}` : null;
 };
 
 export default function ListProducts({
@@ -186,16 +209,26 @@ export default function ListProducts({
     const cost = parseNumber(item.custo);
     const statusLabel = item.ativo === false ? "Inativo" : "Ativo";
 
+    const imageUri = getImageUri(item.imagem);
+
     if (viewMode === "compact") {
       return (
         <View className="mb-3 rounded-2xl border border-divider bg-card-background px-4 py-3">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-3">
-              <View className="h-10 w-10 items-center justify-center rounded-xl bg-background-secondary">
-                <Text className="text-xs font-semibold text-text-primary">
-                  {getInitials(item.nome)}
-                </Text>
-              </View>
+              {imageUri ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  className="h-10 w-10 rounded-xl border border-divider"
+                  resizeMode="cover"
+                />
+              ) : (
+                <View className="h-10 w-10 items-center justify-center rounded-xl bg-background-secondary">
+                  <Text className="text-xs font-semibold text-text-primary">
+                    {getInitials(item.nome)}
+                  </Text>
+                </View>
+              )}
               <View>
                 <Text className="text-sm font-semibold text-text-primary">
                   {item.nome ?? "Produto sem nome"}
@@ -222,11 +255,19 @@ export default function ListProducts({
       <View className="mb-4 overflow-hidden rounded-[26px] border border-divider bg-card-background p-5 shadow-lg">
         <View className="flex-row items-center justify-between">
           <View className="flex-1 flex-row items-center gap-3 pr-3">
-            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-background-secondary">
-              <Text className="text-sm font-semibold text-text-primary">
-                {getInitials(item.nome)}
-              </Text>
-            </View>
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                className="h-12 w-12 rounded-2xl border border-divider"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="h-12 w-12 items-center justify-center rounded-2xl bg-background-secondary">
+                <Text className="text-sm font-semibold text-text-primary">
+                  {getInitials(item.nome)}
+                </Text>
+              </View>
+            )}
             <View className="flex-1">
               <Text className="text-base font-semibold text-text-primary">
                 {item.nome ?? "Produto sem nome"}

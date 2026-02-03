@@ -26,7 +26,10 @@ const toNumberOrNull = (value: number | string | undefined) => {
 const normalizeImage = (imagem?: ProductPayload["imagem"]) => {
   if (!imagem) return null;
   if (typeof imagem === "string") return imagem;
-  return imagem.base64 ?? imagem.uri ?? null;
+  if (imagem.base64) {
+    return `data:image/jpeg;base64,${imagem.base64}`;
+  }
+  return imagem.uri ?? null;
 };
 
 export class ProductsService {
