@@ -12,7 +12,8 @@ export type NewActionKey =
   | "products"
   | "services"
   | "budgets"
-  | "transactions";
+  | "transactions"
+  | "clients";
 
 type NewScreenComponentProps = {
   onSelect?: (key: NewActionKey) => void;
@@ -85,6 +86,14 @@ export default function NewScreenComponent({
         icon: { family: "Ionicons", name: "swap-horizontal" },
         tag: "Financeiro",
         accent: "#EDE9FE",
+      },
+      {
+        key: "clients",
+        title: "Cliente",
+        subtitle: "Cadastre contatos e dados de relacionamento.",
+        icon: { family: "Ionicons", name: "people-outline" },
+        tag: "Relacionamento",
+        accent: "#FCE7F3",
       },
     ],
     []

@@ -10,14 +10,26 @@ import ProductForm from "../../components/ProductsComponents/ProductForm";
 import ServicesForm from "../../components/ServicesComponent/ServicesForm";
 import OrderForm from "../../components/OrderComponents/OrderForm";
 import FinanceMovimentForm from "../../components/FinanceComponents/FinanceMovimentForm";
+import ClientForm from "../../components/ClientsComponent/ClientForm";
+import ClientScreen from "../ClientScreen/ClientScreen";
 
-type TabKey = "dashboard" | "products" | "action" | "services" | "finance";
+type TabKey =
+  | "dashboard"
+  | "products"
+  | "action"
+  | "services"
+  | "finance"
+  | "clients";
 
 type DashboardFinanceProps = {
   userName?: string;
+  onLogout?: () => void;
 };
 
-export default function DashboardFinance({ userName }: DashboardFinanceProps) {
+export default function DashboardFinance({
+  userName,
+  onLogout,
+}: DashboardFinanceProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [activeNewForm, setActiveNewForm] = useState<NewActionKey | null>(
@@ -30,6 +42,10 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
         return <HomeComponent userName={userName} />;
       case "products":
         return <ProductsScreen />;
+      case "clients":
+        return (
+          <ClientScreen onNewClient={() => setIsNewModalOpen(true)} />
+        );
       case "services":
         return (
           <View className="flex-1 bg-background-primary px-6 pt-10">
@@ -82,9 +98,11 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
                 ? "Novo produto"
                 : activeNewForm === "services"
                   ? "Novo serviço"
-                  : activeNewForm === "budgets"
+                : activeNewForm === "budgets"
                     ? "Novo orçamento"
-                    : "Nova movimentação"}
+                    : activeNewForm === "clients"
+                      ? "Novo cliente"
+                      : "Nova movimentação"}
             </Text>
             <Pressable
               onPress={() => setActiveNewForm(null)}
@@ -105,6 +123,9 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
           {activeNewForm === "transactions" ? (
             <FinanceMovimentForm onBack={() => setActiveNewForm(null)} />
           ) : null}
+          {activeNewForm === "clients" ? (
+            <ClientForm onBack={() => setActiveNewForm(null)} />
+          ) : null}
         </View>
       </Modal>
       <BottomNavigation
@@ -117,6 +138,7 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
           setActiveTab(tab);
         }}
         onActionPress={() => setIsNewModalOpen(true)}
+        onLogout={onLogout}
       />
     </View>
   );

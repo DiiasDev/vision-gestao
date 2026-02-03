@@ -94,6 +94,17 @@ export default function AuthComponent() {
     Alert.alert("Login realizado", "Bem-vindo ao Vision Gestão!");
   };
 
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch (logoutError) {
+      console.warn("Falha ao encerrar sessão:", logoutError);
+    } finally {
+      setIsLoggedIn(false);
+      setUserName(undefined);
+    }
+  };
+
   if (isBooting) {
     return (
       <View className="flex-1 items-center justify-center bg-background-primary">
@@ -106,7 +117,7 @@ export default function AuthComponent() {
   }
 
   if (isLoggedIn) {
-    return <DashboardFinance userName={userName} />;
+    return <DashboardFinance userName={userName} onLogout={handleLogout} />;
   }
 
   return (
