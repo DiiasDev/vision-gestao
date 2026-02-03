@@ -1,0 +1,37 @@
+/* =========================================================
+   THEME – APP GESTÃO
+   Paleta moderna, profissional e escalável
+   ========================================================= */
+
+/* =========================================================
+   LIGHT MODE
+   ========================================================= */
+:root {
+  /* Backgrounds */
+  --background-primary: #F9FAFB;
+  --background-secondary: #F3F4F6;
+
+  /* Cards & Containers */
+  --card-background: #FFFFFF;
+  --border-default: #D1D5DB;
+  --divider: #E5E7EB;
+
+  /* Text */
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-tertiary: #9CA3AF;
+  --text-disabled: #D1D5DB;
+
+  /* Buttons */
+  --button-primary: #2563EB;
+  --button-primary-pressed: #1D4ED8;
+  --button-secondary: #E5E7EB;
+  --button-secondary-text: #111827;
+  --button-destructive: #DC2626;
+
+  /* States */
+  --state-success: #16A34A;
+  --state-warning: #F59E0B;
+  --state-error: #DC2626;
+  --state-info: #2563EB;
+}
