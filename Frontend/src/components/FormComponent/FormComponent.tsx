@@ -38,7 +38,9 @@ type FormComponentProps = {
   subtitle?: string;
   onSubmit?: (data: Record<string, any>) => void | Promise<void>;
   submitButtonText?: string;
-  initialData?: Record<string, any>;
+  initialData?: Record<string, any> | null;
+  onBack?: () => void;
+  backButtonText?: string;
 };
 
 type SelectState = {
@@ -85,15 +87,24 @@ export default function FormComponent({
   subtitle,
   onSubmit,
   submitButtonText = "Salvar",
-  initialData = {},
+  initialData = null,
+  onBack,
+  backButtonText = "Voltar",
 }: FormComponentProps) {
-  const [formData, setFormData] = useState<Record<string, any>>(initialData);
+  const resolvedInitialData = useMemo(
+    () => initialData ?? {},
+    [initialData]
+  );
+  const [formData, setFormData] =
+    useState<Record<string, any>>(resolvedInitialData);
   const [loading, setLoading] = useState(false);
   const [activeSelect, setActiveSelect] = useState<SelectState | null>(null);
   const [activeImageField, setActiveImageField] = useState<string | null>(null);
 
   useEffect(() => {
-    setFormData(initialData);
+    if (initialData) {
+      setFormData(initialData);
+    }
   }, [initialData]);
 
   const groupedFields = useMemo(() => {
@@ -274,9 +285,21 @@ export default function FormComponent({
       >
         <View className="rounded-3xl border border-divider bg-card-background p-6">
           <View className="mb-6">
-            <Text className="text-2xl font-semibold text-text-primary">
-              {title}
-            </Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-2xl font-semibold text-text-primary">
+                {title}
+              </Text>
+              {onBack ? (
+                <Pressable
+                  onPress={onBack}
+                  className="rounded-full border border-divider px-3 py-1"
+                >
+                  <Text className="text-sm text-text-secondary">
+                    {backButtonText}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
             {subtitle ? (
               <Text className="mt-2 text-sm text-text-secondary">
                 {subtitle}

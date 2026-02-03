@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { Modal, Pressable, Text, View } from "react-native";
 import BottomNavigation from "../../components/BottomNavigation/BottomNavigation";
 import HomeComponent from "../../components/Home/HomeComponent";
 import NewScreenComponent from "../../components/NewScreenComponent/NewScreenComponent";
+import ProductsScreen from "../ProductsScreen/ProductsScreen";
 
 type TabKey = "dashboard" | "products" | "action" | "services" | "finance";
 
@@ -13,6 +14,7 @@ type DashboardFinanceProps = {
 export default function DashboardFinance({ userName }: DashboardFinanceProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isProductFormOpen, setIsProductFormOpen] = useState(false);
 
   const content = useMemo(() => {
     switch (activeTab) {
@@ -63,7 +65,34 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
         modalOnly
         isVisible={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
+        onSelect={(key) => {
+          if (key === "products") {
+            setIsNewModalOpen(false);
+            setIsProductFormOpen(true);
+          }
+        }}
       />
+      <Modal
+        transparent
+        visible={isProductFormOpen}
+        animationType="slide"
+        onRequestClose={() => setIsProductFormOpen(false)}
+      >
+        <View className="flex-1 bg-background-primary">
+          <View className="flex-row items-center justify-between px-6 pt-6">
+            <Text className="text-lg font-semibold text-text-primary">
+              Novo produto
+            </Text>
+            <Pressable
+              onPress={() => setIsProductFormOpen(false)}
+              className="rounded-full border border-divider px-3 py-1"
+            >
+              <Text className="text-sm text-text-secondary">Fechar</Text>
+            </Pressable>
+          </View>
+          <ProductsScreen onBack={() => setIsProductFormOpen(false)} />
+        </View>
+      </Modal>
       <BottomNavigation
         activeTab={activeTab}
         onChange={(tab) => {
