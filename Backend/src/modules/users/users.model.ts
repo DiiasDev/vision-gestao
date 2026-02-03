@@ -1,4 +1,4 @@
-import { type UserModelTypes } from "../../types/Users/usersModel.types.js";
+// import { type UserModelTypes } from "../../types/Users/usersModel.types.js";
 export class UsersModel {
   static tableName = "usuarios";
 
