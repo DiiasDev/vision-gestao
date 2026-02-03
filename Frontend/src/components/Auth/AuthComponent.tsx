@@ -1,4 +1,6 @@
+import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -7,8 +9,52 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Auth } from "../../services/auth.services";
+import DashboardFinance from "../../screens/DashboardFinance/DashboardFinance";
 
 export default function AuthComponent() {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [remember, setRemember] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState<string | undefined>(undefined);
+
+  const handleLogin = async () => {
+    setError(null);
+
+    if (!email || !senha) {
+      setError("Informe e-mail e senha.");
+      Alert.alert("Erro no login", "Informe e-mail e senha.");
+      return;
+    }
+
+    setLoading(true);
+    let result: any;
+    try {
+      result = await Auth.login({ email, password: senha, remember });
+    } finally {
+      setLoading(false);
+    }
+
+    if (!result?.success) {
+      const message = result?.message ?? "Falha no login.";
+      setError(message);
+      Alert.alert("Erro no login", message);
+      return;
+    }
+
+    setError(null);
+    setUserName(result?.user?.nome_completo);
+    setIsLoggedIn(true);
+    Alert.alert("Login realizado", "Bem-vindo ao Vision Gestão!");
+  };
+
+  if (isLoggedIn) {
+    return <DashboardFinance userName={userName} />;
+  }
+
   return (
     <View className="flex-1 bg-background-primary">
       <View className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-button-primary/10" />
@@ -55,6 +101,8 @@ export default function AuthComponent() {
                     placeholderTextColor="#9CA3AF"
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    value={email}
+                    onChangeText={setEmail}
                   />
                 </View>
 
@@ -67,13 +115,26 @@ export default function AuthComponent() {
                     placeholder="••••••••"
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry
+                    value={senha}
+                    onChangeText={setSenha}
                   />
                 </View>
               </View>
 
+              {error ? (
+                <Text className="mt-4 text-sm text-state-error">{error}</Text>
+              ) : null}
+
               <View className="mt-4 flex-row items-center justify-between">
-                <Pressable className="flex-row items-center gap-2">
-                  <View className="h-5 w-5 rounded-md border border-divider bg-background-primary" />
+                <Pressable
+                  className="flex-row items-center gap-2"
+                  onPress={() => setRemember((value) => !value)}
+                >
+                  <View
+                    className={`h-5 w-5 rounded-md border border-divider ${
+                      remember ? "bg-button-primary" : "bg-background-primary"
+                    }`}
+                  />
                   <Text className="text-sm text-text-secondary">
                     Lembrar-me
                   </Text>
@@ -85,9 +146,13 @@ export default function AuthComponent() {
                 </Pressable>
               </View>
 
-              <Pressable className="mt-6 rounded-xl bg-button-primary py-3.5 pressed:bg-button-primary-pressed">
+              <Pressable
+                className="mt-6 rounded-xl bg-button-primary py-3.5 pressed:bg-button-primary-pressed"
+                onPress={handleLogin}
+                disabled={loading}
+              >
                 <Text className="text-center text-base font-semibold text-white">
-                  Entrar
+                  {loading ? "Entrando..." : "Entrar"}
                 </Text>
               </Pressable>
 

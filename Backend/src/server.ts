@@ -14,8 +14,9 @@ export class Server {
       app.use(Routes.routes);
 
       const PORT = process.env.PORT || 3333;
-      app.listen(PORT, () => {
-        console.log(`🚀 Server running on port ${PORT}`);
+      const HOST = process.env.HOST || "0.0.0.0";
+      app.listen(PORT, HOST, () => {
+        console.log(`🚀 Server running on http://${HOST}:${PORT}`);
       });
     } catch (error: any) {
       console.error("❌ Error starting server");
