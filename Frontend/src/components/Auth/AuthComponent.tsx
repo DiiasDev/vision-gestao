@@ -1,25 +1,55 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ActivityIndicator,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Auth } from "../../services/auth.services";
 import DashboardFinance from "../../screens/DashboardFinance/DashboardFinance";
+
+const SESSION_STORAGE_KEY = "@vision-gestao/session";
 
 export default function AuthComponent() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState<string | undefined>(undefined);
+  const [isBooting, setIsBooting] = useState(true);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
+        if (!raw) {
+          return;
+        }
+        const data = JSON.parse(raw);
+        if (data) {
+          setIsLoggedIn(true);
+          setUserName(data?.user?.nome_completo ?? data?.userName);
+          if (data?.email) {
+            setEmail(data.email);
+          }
+        }
+      } catch (loadError) {
+        console.warn("Falha ao restaurar sessão:", loadError);
+      } finally {
+        setIsBooting(false);
+      }
+    };
+
+    loadSession();
+  }, []);
 
   const handleLogin = async () => {
     setError(null);
@@ -46,10 +76,34 @@ export default function AuthComponent() {
     }
 
     setError(null);
-    setUserName(result?.user?.nome_completo);
+    const resolvedUserName = result?.user?.nome_completo;
+    setUserName(resolvedUserName);
     setIsLoggedIn(true);
+    if (remember) {
+      await AsyncStorage.setItem(
+        SESSION_STORAGE_KEY,
+        JSON.stringify({
+          ...result,
+          email,
+          userName: resolvedUserName,
+        })
+      );
+    } else {
+      await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+    }
     Alert.alert("Login realizado", "Bem-vindo ao Vision Gestão!");
   };
+
+  if (isBooting) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background-primary">
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text className="mt-3 text-sm text-text-secondary">
+          Verificando sua sessão...
+        </Text>
+      </View>
+    );
+  }
 
   if (isLoggedIn) {
     return <DashboardFinance userName={userName} />;

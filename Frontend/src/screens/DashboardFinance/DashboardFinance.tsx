@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import BottomNavigation from "../../components/BottomNavigation/BottomNavigation";
 import HomeComponent from "../../components/Home/HomeComponent";
+import NewScreenComponent from "../../components/NewScreenComponent/NewScreenComponent";
 
 type TabKey = "dashboard" | "products" | "action" | "services" | "finance";
 
@@ -11,6 +12,7 @@ type DashboardFinanceProps = {
 
 export default function DashboardFinance({ userName }: DashboardFinanceProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   const content = useMemo(() => {
     switch (activeTab) {
@@ -49,17 +51,6 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
             </Text>
           </View>
         );
-      case "action":
-        return (
-          <View className="flex-1 bg-background-primary px-6 pt-10">
-            <Text className="text-2xl font-semibold text-text-primary">
-              Novo registro
-            </Text>
-            <Text className="mt-2 text-base text-text-secondary">
-              Crie uma nova venda, serviço ou lançamento financeiro.
-            </Text>
-          </View>
-        );
       default:
         return <HomeComponent userName={userName} />;
     }
@@ -68,7 +59,22 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
   return (
     <View className="flex-1 bg-background-primary">
       {content}
-      <BottomNavigation activeTab={activeTab} onChange={setActiveTab} />
+      <NewScreenComponent
+        modalOnly
+        isVisible={isNewModalOpen}
+        onClose={() => setIsNewModalOpen(false)}
+      />
+      <BottomNavigation
+        activeTab={activeTab}
+        onChange={(tab) => {
+          if (tab === "action") {
+            setIsNewModalOpen(true);
+            return;
+          }
+          setActiveTab(tab);
+        }}
+        onActionPress={() => setIsNewModalOpen(true)}
+      />
     </View>
   );
 }

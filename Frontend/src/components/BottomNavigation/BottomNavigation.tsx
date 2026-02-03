@@ -6,11 +6,13 @@ type TabKey = "dashboard" | "products" | "action" | "services" | "finance";
 type BottomNavigationProps = {
   activeTab: TabKey;
   onChange: (tab: TabKey) => void;
+  onActionPress?: () => void;
 };
 
 export default function BottomNavigation({
   activeTab,
   onChange,
+  onActionPress,
 }: BottomNavigationProps) {
   const isActive = (tab: TabKey) => activeTab === tab;
 
@@ -55,7 +57,7 @@ export default function BottomNavigation({
 
         <Pressable
           className="items-center -mt-6"
-          onPress={() => onChange("action")}
+          onPress={() => (onActionPress ? onActionPress() : onChange("action"))}
         >
           <View className="h-14 w-14 items-center justify-center rounded-full bg-button-primary shadow-lg">
             <Ionicons name="add" size={26} color="#FFFFFF" />
