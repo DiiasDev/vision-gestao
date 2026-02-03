@@ -2,9 +2,14 @@ import { useMemo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import BottomNavigation from "../../components/BottomNavigation/BottomNavigation";
 import HomeComponent from "../../components/Home/HomeComponent";
-import NewScreenComponent from "../../components/NewScreenComponent/NewScreenComponent";
+import NewScreenComponent, {
+  NewActionKey,
+} from "../../components/NewScreenComponent/NewScreenComponent";
 import ProductsScreen from "../ProductsScreen/ProductsScreen";
 import ProductForm from "../../components/ProductsComponents/ProductForm";
+import ServicesForm from "../../components/ServicesComponent/ServicesForm";
+import OrderForm from "../../components/OrderComponents/OrderForm";
+import FinanceMovimentForm from "../../components/FinanceComponents/FinanceMovimentForm";
 
 type TabKey = "dashboard" | "products" | "action" | "services" | "finance";
 
@@ -15,7 +20,9 @@ type DashboardFinanceProps = {
 export default function DashboardFinance({ userName }: DashboardFinanceProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
-  const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+  const [activeNewForm, setActiveNewForm] = useState<NewActionKey | null>(
+    null
+  );
 
   const content = useMemo(() => {
     switch (activeTab) {
@@ -58,31 +65,46 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
         isVisible={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
         onSelect={(key) => {
-          if (key === "products") {
-            setIsNewModalOpen(false);
-            setIsProductFormOpen(true);
-          }
+          setIsNewModalOpen(false);
+          setActiveNewForm(key);
         }}
       />
       <Modal
         transparent
-        visible={isProductFormOpen}
+        visible={!!activeNewForm}
         animationType="slide"
-        onRequestClose={() => setIsProductFormOpen(false)}
+        onRequestClose={() => setActiveNewForm(null)}
       >
         <View className="flex-1 bg-background-primary">
           <View className="flex-row items-center justify-between px-6 pt-6">
             <Text className="text-lg font-semibold text-text-primary">
-              Novo produto
+              {activeNewForm === "products"
+                ? "Novo produto"
+                : activeNewForm === "services"
+                  ? "Novo serviço"
+                  : activeNewForm === "budgets"
+                    ? "Novo orçamento"
+                    : "Nova movimentação"}
             </Text>
             <Pressable
-              onPress={() => setIsProductFormOpen(false)}
+              onPress={() => setActiveNewForm(null)}
               className="rounded-full border border-divider px-3 py-1"
             >
               <Text className="text-sm text-text-secondary">Fechar</Text>
             </Pressable>
           </View>
-          <ProductForm onBack={() => setIsProductFormOpen(false)} />
+          {activeNewForm === "products" ? (
+            <ProductForm onBack={() => setActiveNewForm(null)} />
+          ) : null}
+          {activeNewForm === "services" ? (
+            <ServicesForm onBack={() => setActiveNewForm(null)} />
+          ) : null}
+          {activeNewForm === "budgets" ? (
+            <OrderForm onBack={() => setActiveNewForm(null)} />
+          ) : null}
+          {activeNewForm === "transactions" ? (
+            <FinanceMovimentForm onBack={() => setActiveNewForm(null)} />
+          ) : null}
         </View>
       </Modal>
       <BottomNavigation
