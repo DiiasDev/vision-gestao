@@ -99,4 +99,26 @@ export class ProductsService {
       };
     }
   }
+
+  public async getProducts() {
+    try {
+      const pool = DB.connect();
+
+      const query = `SELECT * FROM produtos ORDER BY created_at DESC`;
+
+      const result = await pool.query(query);
+
+      return {
+        success: true,
+        message: "Lista de produtos",
+        products: result?.rows ?? [],
+      };
+    } catch (error: any) {
+      console.error("Erro ao exibir produtos: ", error);
+      return {
+        success: false,
+        message: "erro ao buscar produtos",
+      };
+    }
+  }
 }

@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import type { ProductsTypes } from "../../../Backend/src/types/Products/Products.types";
 
 export type ProductPayload = {
   codigo?: string;
@@ -13,6 +14,8 @@ export type ProductPayload = {
   imagem?: string | { base64?: string; uri?: string };
   ativo?: boolean | number;
 };
+
+export type Product = ProductsTypes;
 
 const toNumberOrNull = (value: number | string | undefined) => {
   if (value === undefined || value === null || value === "") return null;
@@ -78,6 +81,45 @@ export class ProductsService {
       return {
         success: false,
         message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
+  static async getProducts() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${ProductsService.baseUrl}/products`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar produtos",
+          products: [],
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message ?? "Lista de produtos",
+        products: data?.products ?? [],
+      };
+    } catch (error: any) {
+      console.error("Erro ao listar produtos: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        products: [],
       };
     }
   }

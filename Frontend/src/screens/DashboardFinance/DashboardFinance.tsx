@@ -4,6 +4,7 @@ import BottomNavigation from "../../components/BottomNavigation/BottomNavigation
 import HomeComponent from "../../components/Home/HomeComponent";
 import NewScreenComponent from "../../components/NewScreenComponent/NewScreenComponent";
 import ProductsScreen from "../ProductsScreen/ProductsScreen";
+import ProductForm from "../../components/ProductsComponents/ProductForm";
 
 type TabKey = "dashboard" | "products" | "action" | "services" | "finance";
 
@@ -21,16 +22,7 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
       case "dashboard":
         return <HomeComponent userName={userName} />;
       case "products":
-        return (
-          <View className="flex-1 bg-background-primary px-6 pt-10">
-            <Text className="text-2xl font-semibold text-text-primary">
-              Produtos
-            </Text>
-            <Text className="mt-2 text-base text-text-secondary">
-              Catálogo de acessórios, peças e estoque.
-            </Text>
-          </View>
-        );
+        return <ProductsScreen />;
       case "services":
         return (
           <View className="flex-1 bg-background-primary px-6 pt-10">
@@ -90,7 +82,7 @@ export default function DashboardFinance({ userName }: DashboardFinanceProps) {
               <Text className="text-sm text-text-secondary">Fechar</Text>
             </Pressable>
           </View>
-          <ProductsScreen onBack={() => setIsProductFormOpen(false)} />
+          <ProductForm onBack={() => setIsProductFormOpen(false)} />
         </View>
       </Modal>
       <BottomNavigation
