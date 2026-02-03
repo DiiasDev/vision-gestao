@@ -1,15 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
+  Modal,
   Pressable,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { Product } from "../../services/Products.services";
+import FormComponent from "../FormComponent/FormComponent";
+import { fieldsProduct } from "../../Fields/ProductsForm";
+import {
+  ProductPayload,
+  ProductsService,
+  type Product,
+} from "../../services/Products.services";
 
 type ListProductsProps = {
   products: Product[];
@@ -80,6 +88,17 @@ export default function ListProducts({
 }: ListProductsProps) {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "compact">("cards");
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [actionAlert, setActionAlert] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!actionAlert) return;
+    const timer = setTimeout(() => setActionAlert(null), 4000);
+    return () => clearTimeout(timer);
+  }, [actionAlert]);
 
   const safeProducts = Array.isArray(products) ? products : [];
   const filtered = useMemo(() => {
@@ -199,6 +218,26 @@ export default function ListProducts({
           </Text>
         </View>
       ) : null}
+
+      {actionAlert ? (
+        <View
+          className={`mt-4 rounded-2xl border px-4 py-3 ${
+            actionAlert.type === "success"
+              ? "border-emerald-200 bg-emerald-50"
+              : "border-rose-200 bg-rose-50"
+          }`}
+        >
+          <Text
+            className={`text-sm font-semibold ${
+              actionAlert.type === "success"
+                ? "text-emerald-700"
+                : "text-rose-700"
+            }`}
+          >
+            {actionAlert.message}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 
@@ -210,6 +249,45 @@ export default function ListProducts({
     const statusLabel = item.ativo === false ? "Inativo" : "Ativo";
 
     const imageUri = getImageUri(item.imagem);
+    const handleEdit = () => setEditingProduct(item);
+    const handleDelete = () => {
+      if (!item.id) {
+        setActionAlert({
+          type: "error",
+          message: "Não foi possível identificar o produto.",
+        });
+        return;
+      }
+
+      Alert.alert(
+        "Excluir produto",
+        `Tem certeza que deseja excluir "${item.nome ?? "este produto"}"?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Excluir",
+            style: "destructive",
+            onPress: async () => {
+              const result = await ProductsService.deleteProduct(item.id);
+              if (result?.success) {
+                setActionAlert({
+                  type: "success",
+                  message: "Produto excluído com sucesso.",
+                });
+                onRefresh?.();
+              } else {
+                setActionAlert({
+                  type: "error",
+                  message:
+                    result?.message ??
+                    "Não foi possível excluir o produto.",
+                });
+              }
+            },
+          },
+        ]
+      );
+    };
 
     if (viewMode === "compact") {
       return (
@@ -245,6 +323,20 @@ export default function ListProducts({
               <Text className={`text-xs ${isLowStock ? "text-state-error" : "text-text-tertiary"}`}>
                 {stock ?? 0} {item.unidade ?? "un"}
               </Text>
+            </View>
+            <View className="ml-3 flex-row items-center gap-2">
+              <Pressable
+                onPress={handleEdit}
+                className="h-9 w-9 items-center justify-center rounded-full border border-divider bg-background-secondary"
+              >
+                <Ionicons name="create-outline" size={16} color="#2563EB" />
+              </Pressable>
+              <Pressable
+                onPress={handleDelete}
+                className="h-9 w-9 items-center justify-center rounded-full border border-divider bg-background-secondary"
+              >
+                <Ionicons name="trash-outline" size={16} color="#DC2626" />
+              </Pressable>
             </View>
           </View>
         </View>
@@ -358,6 +450,27 @@ export default function ListProducts({
             SKU: {item.sku ?? "—"}
           </Text>
         </View>
+
+        <View className="mt-4 flex-row gap-3">
+          <Pressable
+            onPress={handleEdit}
+            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-divider px-4 py-3"
+          >
+            <Ionicons name="create-outline" size={16} color="#2563EB" />
+            <Text className="text-sm font-semibold text-text-primary">
+              Editar
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={handleDelete}
+            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-divider px-4 py-3"
+          >
+            <Ionicons name="trash-outline" size={16} color="#DC2626" />
+            <Text className="text-sm font-semibold text-text-primary">
+              Excluir
+            </Text>
+          </Pressable>
+        </View>
       </View>
     );
   };
@@ -374,30 +487,110 @@ export default function ListProducts({
   }
 
   return (
-    <FlatList
-      data={filtered}
-      keyExtractor={(item, index) =>
-        item.id?.toString() ?? item.sku ?? item.codigo ?? `product-${index}`
-      }
-      renderItem={({ item }) => renderProductCard(item)}
-      ListHeaderComponent={listHeader}
-      contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 140 }}
-      showsVerticalScrollIndicator={false}
-      onRefresh={onRefresh}
-      refreshing={Boolean(refreshing)}
-      ListEmptyComponent={
-        <View className="rounded-[26px] border border-divider bg-card-background p-6">
-          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-background-secondary">
-            <Ionicons name="cube-outline" size={22} color="#9CA3AF" />
+    <>
+      <FlatList
+        data={filtered}
+        keyExtractor={(item, index) =>
+          item.id?.toString() ?? item.sku ?? item.codigo ?? `product-${index}`
+        }
+        renderItem={({ item }) => renderProductCard(item)}
+        ListHeaderComponent={listHeader}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+        onRefresh={onRefresh}
+        refreshing={Boolean(refreshing)}
+        ListEmptyComponent={
+          <View className="rounded-[26px] border border-divider bg-card-background p-6">
+            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-background-secondary">
+              <Ionicons name="cube-outline" size={22} color="#9CA3AF" />
+            </View>
+            <Text className="mt-4 text-lg font-semibold text-text-primary">
+              Nenhum produto encontrado
+            </Text>
+            <Text className="mt-2 text-sm text-text-secondary">
+              Cadastre novos produtos ou refine sua busca para exibir resultados.
+            </Text>
           </View>
-          <Text className="mt-4 text-lg font-semibold text-text-primary">
-            Nenhum produto encontrado
-          </Text>
-          <Text className="mt-2 text-sm text-text-secondary">
-            Cadastre novos produtos ou refine sua busca para exibir resultados.
-          </Text>
+        }
+      />
+
+      <Modal
+        visible={!!editingProduct}
+        animationType="slide"
+        onRequestClose={() => setEditingProduct(null)}
+      >
+        <View className="flex-1 bg-background-primary">
+          <FormComponent
+            fields={fieldsProduct}
+            title="Editar produto"
+            subtitle="Atualize as informações do produto."
+            submitButtonText="Salvar alterações"
+            initialData={
+              editingProduct
+                ? {
+                    codigo: editingProduct.codigo ?? editingProduct.sku ?? "",
+                    nome: editingProduct.nome ?? "",
+                    categoria: editingProduct.categoria ?? "",
+                    sku: editingProduct.sku ?? "",
+                    preco_venda: editingProduct.preco_venda ?? "",
+                    custo: editingProduct.custo ?? "",
+                    estoque: editingProduct.estoque ?? "",
+                    unidade: editingProduct.unidade ?? "",
+                    descricao: editingProduct.descricao ?? "",
+                    imagem: editingProduct.imagem ?? null,
+                    ativo: editingProduct.ativo === false ? 0 : 1,
+                  }
+                : null
+            }
+            onBack={() => setEditingProduct(null)}
+            backButtonText="Cancelar"
+            onSubmit={async (data) => {
+              if (!editingProduct?.id) {
+                setActionAlert({
+                  type: "error",
+                  message: "Não foi possível identificar o produto.",
+                });
+                return;
+              }
+
+              const payload: ProductPayload = {
+                codigo: data.codigo ?? data.sku,
+                nome: data.nome,
+                categoria: data.categoria,
+                sku: data.sku,
+                preco_venda: data.preco_venda,
+                custo: data.custo,
+                estoque: data.estoque,
+                unidade: data.unidade,
+                descricao: data.descricao,
+                imagem: data.imagem,
+                ativo: data.ativo,
+              };
+
+              const result = await ProductsService.updateProduct(
+                editingProduct.id,
+                payload
+              );
+
+              if (result?.success) {
+                setActionAlert({
+                  type: "success",
+                  message: "Produto atualizado com sucesso.",
+                });
+                setEditingProduct(null);
+                onRefresh?.();
+              } else {
+                setActionAlert({
+                  type: "error",
+                  message:
+                    result?.message ??
+                    "Não foi possível atualizar o produto.",
+                });
+              }
+            }}
+          />
         </View>
-      }
-    />
+      </Modal>
+    </>
   );
 }

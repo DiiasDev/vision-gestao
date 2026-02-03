@@ -37,4 +37,64 @@ export class ProductsController {
       });
     }
   }
+
+  public async updateProduct(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const produto = req.body ?? {};
+
+      const productId = Array.isArray(id) ? id[0] : id;
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "Id do produto é obrigatório",
+        });
+      }
+
+      const result = await this.product.updateProduct(productId, produto);
+      const statusCode = result.success
+        ? 200
+        : result.message === "Produto não encontrado"
+          ? 404
+          : 400;
+
+      return res.status(statusCode).json(result);
+    } catch (error: any) {
+      console.log("Erro ao atualizar produto: ", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao atualizar produto",
+      });
+    }
+  }
+
+  public async deleteProduct(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const productId = Array.isArray(id) ? id[0] : id;
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "Id do produto é obrigatório",
+        });
+      }
+
+      const result = await this.product.deleteProduct(productId);
+      const statusCode = result.success
+        ? 200
+        : result.message === "Produto não encontrado"
+          ? 404
+          : 400;
+
+      return res.status(statusCode).json(result);
+    } catch (error: any) {
+      console.log("Erro ao excluir produto: ", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao excluir produto",
+      });
+    }
+  }
 }

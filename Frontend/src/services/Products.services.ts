@@ -126,4 +126,88 @@ export class ProductsService {
       };
     }
   }
+
+  static async updateProduct(id: string, payload: ProductPayload) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${ProductsService.baseUrl}/products/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          codigo: payload.codigo ?? null,
+          nome: payload.nome ?? null,
+          categoria: payload.categoria ?? null,
+          sku: payload.sku ?? null,
+          preco_venda: toNumberOrNull(payload.preco_venda),
+          custo: toNumberOrNull(payload.custo),
+          estoque: toNumberOrNull(payload.estoque),
+          unidade: payload.unidade ?? null,
+          descricao: payload.descricao ?? null,
+          imagem: normalizeImage(payload.imagem),
+          ativo:
+            payload.ativo === true || payload.ativo === 1
+              ? true
+              : payload.ativo === false || payload.ativo === 0
+                ? false
+                : null,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao atualizar produto",
+        };
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error("Erro ao atualizar produto: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
+  static async deleteProduct(id: string) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${ProductsService.baseUrl}/products/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao excluir produto",
+        };
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error("Erro ao excluir produto: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
 }
