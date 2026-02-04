@@ -33,6 +33,51 @@ const normalizeImage = (imagem?: ServicePayload["imagem"]) => {
 };
 
 export class ServicesService {
+  static async getServices() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/services`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar serviços",
+          services: [],
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message ?? "Lista de serviços",
+        services: data?.services ?? data?.servicos ?? data?.result ?? [],
+      };
+    } catch (error: any) {
+      console.error("Erro ao listar serviços: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        services: [],
+      };
+    }
+  }
+
   static async createService(payload: ServicePayload) {
     try {
       const controller = new AbortController();

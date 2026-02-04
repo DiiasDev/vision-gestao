@@ -19,4 +19,18 @@ export class ServicesController {
       });
     }
   }
+
+  async getServices(req: Request, res: Response) {
+    try {
+      const servicos = await this.service.getServices();
+
+      return res.status(200).json(servicos);
+    } catch (error: any) {
+      console.error("erro ao listar servicos", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao listar serviços",
+      });
+    }
+  }
 }

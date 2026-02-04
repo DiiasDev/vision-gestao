@@ -8,6 +8,7 @@ import NewScreenComponent, {
 import ProductsScreen from "../ProductsScreen/ProductsScreen";
 import ProductForm from "../../components/ProductsComponents/ProductForm";
 import ServicesForm from "../../components/ServicesComponent/ServicesForm";
+import ListServices from "../../components/ServicesComponent/ListServices";
 import OrderForm from "../../components/OrderComponents/OrderForm";
 import FinanceMovimentForm from "../../components/FinanceComponents/FinanceMovimentForm";
 import ClientForm from "../../components/ClientsComponent/ClientForm";
@@ -47,16 +48,7 @@ export default function DashboardFinance({
           <ClientScreen onNewClient={() => setIsNewModalOpen(true)} />
         );
       case "services":
-        return (
-          <View className="flex-1 bg-background-primary px-6 pt-10">
-            <Text className="text-2xl font-semibold text-text-primary">
-              Serviços
-            </Text>
-            <Text className="mt-2 text-base text-text-secondary">
-              Ordens de serviço, reparos e status de manutenção.
-            </Text>
-          </View>
-        );
+        return <ListServices />;
       case "finance":
         return (
           <View className="flex-1 bg-background-primary px-6 pt-10">

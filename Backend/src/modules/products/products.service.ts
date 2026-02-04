@@ -1,5 +1,24 @@
 import { DB } from "../../../database/conn.js";
 import { type ProductsTypes } from "../../types/Products/Products.types.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const defaultImagePath = path.resolve(__dirname, "../../img/produtoImg.png");
+
+const getDefaultProductImage = () => {
+  try {
+    const file = fs.readFileSync(defaultImagePath);
+    return `data:image/png;base64,${file.toString("base64")}`;
+  } catch (error) {
+    console.error("Erro ao carregar imagem padrão do produto:", error);
+    return null;
+  }
+};
+
+const defaultProductImage = getDefaultProductImage();
 
 const normalizeNumber = (value: unknown) => {
   if (value === undefined || value === null || value === "") return null;
@@ -39,6 +58,8 @@ export class ProductsService {
 
       const requiredNome = nome?.toString().trim();
       const requiredPrecoVenda = normalizeNumber(preco_venda);
+      const normalizedImage =
+        imagem && String(imagem).trim() ? imagem : defaultProductImage;
 
       if (!requiredNome) {
         return {
@@ -83,7 +104,7 @@ export class ProductsService {
         normalizeNumber(estoque),
         unidade ?? null,
         descricao ?? null,
-        imagem ?? null,
+        normalizedImage,
         normalizeBoolean(ativo) ?? true,
       ];
 
