@@ -309,7 +309,9 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             : estimatedValue === 0
               ? 0
               : null,
-        validity: validity ? validity.toLocaleDateString("pt-BR") : null,
+        validity: validity
+          ? validity.toISOString().split("T")[0]
+          : null,
         status: status || null,
         notes: notes || null,
       });

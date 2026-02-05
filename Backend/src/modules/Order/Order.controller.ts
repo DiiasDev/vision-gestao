@@ -71,4 +71,18 @@ export class OrderController {
       });
     }
   }
+
+  async convertToService(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const result = await this.service.convertToServiceRealized(id);
+      return res.status(200).json(result);
+    } catch (error: any) {
+      console.error("erro ao converter orçamento", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao converter orçamento",
+      });
+    }
+  }
 }

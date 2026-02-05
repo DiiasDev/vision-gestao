@@ -64,6 +64,16 @@ export const formatCurrencyBR = (value: number | string | null | undefined) => {
 
 export const formatDateBR = (value?: string | Date | null) => {
   if (!value) return "Sem data";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      return trimmed;
+    }
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+    }
+  }
   const parsed = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(parsed.getTime())) return String(value);
   try {

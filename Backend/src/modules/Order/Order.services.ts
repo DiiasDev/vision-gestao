@@ -322,4 +322,133 @@ export class OrderService {
       };
     }
   }
+
+  public async convertToServiceRealized(id: string) {
+    const pool = DB.connect();
+    try {
+      if (!id) {
+        return {
+          success: false,
+          message: "Id do orçamento é obrigatório",
+        };
+      }
+
+      await pool.query("BEGIN");
+
+      const orderResult = await pool.query(
+        "SELECT * FROM orcamentos WHERE id = $1",
+        [id]
+      );
+      const order = orderResult.rows[0];
+      if (!order) {
+        await pool.query("ROLLBACK");
+        return {
+          success: false,
+          message: "Orçamento não encontrado",
+        };
+      }
+
+      const itemsResult = await pool.query(
+        "SELECT * FROM orcamentos_itens WHERE orcamento_id = $1",
+        [id]
+      );
+      const items = itemsResult.rows ?? [];
+
+      const insertService = `
+        INSERT INTO servicos_realizados (
+          cliente_id,
+          cliente_nome,
+          contato,
+          servico_id,
+          servico_nome,
+          equipamento,
+          descricao,
+          data_servico,
+          status,
+          valor_servico,
+          valor_produtos,
+          valor_total,
+          custo_servico,
+          custo_produtos,
+          custo_total,
+          observacoes
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16
+        )
+        RETURNING *;
+      `;
+
+      const serviceValues = [
+        order.cliente_id ?? null,
+        order.cliente_nome ?? null,
+        order.contato ?? null,
+        order.servico_id ?? null,
+        order.servico_descricao ?? "Serviço realizado",
+        order.equipamento ?? null,
+        order.problema ?? null,
+        new Date().toISOString().split("T")[0],
+        "em_execucao",
+        normalizeNumber(order.valor_servico),
+        normalizeNumber(order.valor_itens),
+        normalizeNumber(order.valor_total),
+        0,
+        0,
+        0,
+        order.observacoes ?? null,
+      ];
+
+      const serviceResult = await pool.query(insertService, serviceValues);
+      const realized = serviceResult.rows[0];
+
+      if (items.length) {
+        const insertItem = `
+          INSERT INTO servicos_realizados_itens (
+            servico_realizado_id,
+            produto_id,
+            produto_nome,
+            quantidade,
+            preco_unitario,
+            total_item,
+            custo_unitario,
+            total_custo_item
+          ) VALUES (
+            $1,$2,$3,$4,$5,$6,$7,$8
+          );
+        `;
+
+        for (const item of items) {
+          await pool.query(insertItem, [
+            realized.id,
+            item.produto_id,
+            item.produto_nome ?? "Produto",
+            item.quantidade ?? 0,
+            item.preco_unitario ?? 0,
+            item.total_item ?? 0,
+            0,
+            0,
+          ]);
+        }
+      }
+
+      await pool.query(
+        "UPDATE orcamentos SET status = $1, atualizado_em = NOW() WHERE id = $2",
+        ["convertido", id]
+      );
+
+      await pool.query("COMMIT");
+
+      return {
+        success: true,
+        message: "Orçamento convertido em serviço realizado",
+        service_realized: realized,
+      };
+    } catch (error: any) {
+      await pool.query("ROLLBACK");
+      console.error("Erro ao converter orçamento:", error);
+      return {
+        success: false,
+        message: "Erro ao converter orçamento",
+      };
+    }
+  }
 }

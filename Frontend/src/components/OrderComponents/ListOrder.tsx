@@ -22,6 +22,7 @@ const statusLabelMap: Record<string, string> = {
   em_analise: "Em análise",
   aprovado: "Aprovado",
   recusado: "Recusado",
+  convertido: "Convertido",
 };
 export default function ListOrder() {
   const [isNewOpen, setIsNewOpen] = useState(false);
@@ -155,7 +156,7 @@ export default function ListOrder() {
                   <View className="flex-1 pr-3">
                     <Text className="text-xs text-text-tertiary">
                       {formatIdShort(order.id)} •{" "}
-                      {formatDateBR(order.criado_em)}
+                      {formatDateBR(order.validade ?? order.criado_em)}
                     </Text>
                     <Text className="mt-2 text-base font-semibold text-text-primary">
                       {order.servico_descricao ?? "Orçamento"}
@@ -227,10 +228,30 @@ export default function ListOrder() {
           </View>
           {selectedOrder ? (
             <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+              <View className="mb-4 flex-row gap-3">
+                <Pressable
+                  onPress={async () => {
+                    if (!selectedOrder.id) return;
+                    const result = await OrderService.convertToServiceRealized(
+                      selectedOrder.id
+                    );
+                    if (result?.success) {
+                      setSelectedOrder(null);
+                      loadOrders();
+                    }
+                  }}
+                  className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-divider px-4 py-3"
+                >
+                  <Ionicons name="swap-horizontal" size={16} color="#0E7490" />
+                  <Text className="text-sm font-semibold text-text-primary">
+                    Gerar ordem de serviço
+                  </Text>
+                </Pressable>
+              </View>
               <View className="rounded-[26px] border border-divider bg-card-background p-5">
                 <Text className="text-xs text-text-tertiary">
                   {formatIdShort(selectedOrder.id)} •{" "}
-                  {formatDateBR(selectedOrder.criado_em)}
+                  {formatDateBR(selectedOrder.validade ?? selectedOrder.criado_em)}
                 </Text>
                 <Text className="mt-2 text-xl font-semibold text-text-primary">
                   {selectedOrder.servico_descricao ?? "Orçamento"}

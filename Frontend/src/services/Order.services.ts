@@ -248,4 +248,43 @@ export class OrderService {
       };
     }
   }
+
+  static async convertToServiceRealized(id: string) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/orders/${id}/realize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao converter orçamento",
+        };
+      }
+
+      return data ?? { success: true };
+    } catch (error: any) {
+      console.error("Erro ao converter orçamento: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
 }
