@@ -566,7 +566,7 @@ export class OrderService {
       form.append("messaging_product", "whatsapp");
       form.append(
         "file",
-        new Blob([pdfBuffer], { type: "application/pdf" }),
+        new Blob([new Uint8Array(pdfBuffer)], { type: "application/pdf" }),
         `orcamento-${order.id}.pdf`
       );
       form.append("type", "application/pdf");

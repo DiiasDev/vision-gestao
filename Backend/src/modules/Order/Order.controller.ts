@@ -75,6 +75,12 @@ export class OrderController {
   async convertToService(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      if (typeof id !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "Id do orçamento é obrigatório",
+        });
+      }
       const result = await this.service.convertToServiceRealized(id);
       return res.status(200).json(result);
     } catch (error: any) {
@@ -89,6 +95,12 @@ export class OrderController {
   async exportOrder(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      if (typeof id !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "Id do orçamento é obrigatório",
+        });
+      }
       const result = await this.service.exportOrderToWhatsapp(id);
       return res.status(200).json(result);
     } catch (error: any) {
