@@ -11,9 +11,12 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { ClienteService, type Client } from "../../services/Clients.services";
 import { ProductsService, type Product } from "../../services/Products.services";
 import { OrderService } from "../../services/Order.services";
+import { ServicesService, type Service } from "../../services/Services.services";
+import { formatCurrencyBR } from "../../utils/formatter";
 
 type OrderFormProps = {
   onBack?: () => void;
@@ -47,16 +50,7 @@ const toNumber = (value?: string | number | null) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const formatCurrency = (value: number) => {
-  try {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  } catch {
-    return `R$ ${value.toFixed(2)}`;
-  }
-};
+const formatCurrency = formatCurrencyBR;
 
 const getImageUri = (imagem?: string | null) => {
   if (!imagem) return undefined;
@@ -96,8 +90,10 @@ const resolveSelectLabel = (
 export default function OrderForm({ onBack }: OrderFormProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [activeSelect, setActiveSelect] = useState<SelectState | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [alert, setAlert] = useState<{
     type: "success" | "error";
     title: string;
@@ -111,7 +107,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [contact, setContact] = useState<string>("");
   const [equipment, setEquipment] = useState<string>("");
   const [problem, setProblem] = useState<string>("");
-  const [validity, setValidity] = useState<string>("");
+  const [validity, setValidity] = useState<Date | null>(null);
   const [status, setStatus] = useState<string>("em_analise");
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<OrderItem[]>([createOrderItem()]);
@@ -126,13 +122,15 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     let mounted = true;
     const loadData = async () => {
       setLoadingData(true);
-      const [clientsResult, productsResult] = await Promise.all([
+      const [clientsResult, productsResult, servicesResult] = await Promise.all([
         ClienteService.getClients(),
         ProductsService.getProducts(),
+        ServicesService.getServices(),
       ]);
       if (!mounted) return;
       setClients(clientsResult?.clients ?? []);
       setProducts(productsResult?.products ?? []);
+      setServices(servicesResult?.services ?? []);
       setLoadingData(false);
     };
     loadData();
@@ -158,21 +156,16 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   }, [products]);
 
   const serviceOptions = useMemo(() => {
-    const serviceProducts = products.filter((product) => {
-      const category = String(product.categoria ?? "").toLowerCase();
-      return category.includes("serv");
-    });
-
-    return serviceProducts.map((product) => ({
-      value: product.id ?? product.nome,
-      label: product.nome,
-      image: getImageUri(product.imagem),
+    return services.map((service) => ({
+      value: String(service.id ?? service.nome_servico),
+      label: service.nome_servico,
+      image: getImageUri(service.imagem),
       subtitle:
-        product.preco_venda !== undefined
-          ? formatCurrency(toNumber(product.preco_venda))
+        service.preco !== undefined
+          ? formatCurrency(toNumber(service.preco))
           : undefined,
     }));
-  }, [products]);
+  }, [services]);
 
   const productOptions = useMemo(() => {
     const filteredProducts = products.filter((product) => {
@@ -204,12 +197,10 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     : undefined;
 
   const selectedService = selectedServiceKey
-    ? productsById.get(selectedServiceKey)
+    ? services.find((service) => String(service.id ?? service.nome_servico) === selectedServiceKey)
     : undefined;
 
-  const servicePrice = selectedService
-    ? toNumber(selectedService.preco_venda)
-    : 0;
+  const servicePrice = selectedService ? toNumber(selectedService.preco) : 0;
 
   const itemsTotal = items.reduce((acc, item) => {
     const quantity = toNumber(item.quantity);
@@ -301,10 +292,14 @@ export default function OrderForm({ onBack }: OrderFormProps) {
         client_contact: contact || null,
         equipment: equipment || null,
         problem: problem || null,
-        service_id: selectedService?.id ?? selectedServiceKey ?? null,
+        service_id: selectedService?.id ?? null,
         service_description: hasServiceSelection ? null : manualService || null,
+        service_value: servicePrice,
         items: items.map((item) => ({
           product_id: item.productId ?? null,
+          product_name: item.productId
+            ? productsById.get(item.productId)?.nome ?? null
+            : null,
           quantity: toNumber(item.quantity) || null,
           price: toNumber(item.price) || null,
         })),
@@ -314,7 +309,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             : estimatedValue === 0
               ? 0
               : null,
-        validity: validity || null,
+        validity: validity ? validity.toLocaleDateString("pt-BR") : null,
         status: status || null,
         notes: notes || null,
       });
@@ -664,13 +659,16 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 </View>
                 <View className="gap-2">
                   <Text className="text-sm text-text-secondary">Validade</Text>
-                  <TextInput
-                    className="rounded-xl border border-divider bg-background-secondary px-4 py-3 text-text-primary"
-                    placeholder="Ex.: 10/03/2026"
-                    placeholderTextColor="#9CA3AF"
-                    value={validity}
-                    onChangeText={setValidity}
-                  />
+                  <Pressable
+                    onPress={() => setShowDatePicker(true)}
+                    className="rounded-xl border border-divider bg-background-secondary px-4 py-3"
+                  >
+                    <Text className="text-base text-text-primary">
+                      {validity
+                        ? validity.toLocaleDateString("pt-BR")
+                        : "Selecionar data"}
+                    </Text>
+                  </Pressable>
                 </View>
                 <View className="gap-2">
                   <Text className="text-sm text-text-secondary">Status</Text>
@@ -778,6 +776,53 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 </Pressable>
               ))}
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={showDatePicker}
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <Pressable
+          onPress={() => setShowDatePicker(false)}
+          className="flex-1 items-center justify-center bg-black/40 px-6"
+        >
+          <Pressable
+            onPress={(event) => event.stopPropagation()}
+            className="w-full rounded-3xl bg-card-background p-5"
+          >
+            <Text className="text-lg font-semibold text-text-primary">
+              Selecionar validade
+            </Text>
+            <View className="mt-4">
+              <DateTimePicker
+                value={validity ?? new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                onChange={(event, selected) => {
+                  const chosen = selected ?? validity ?? new Date();
+                  if (Platform.OS === "android") {
+                    setShowDatePicker(false);
+                  }
+                  if (event.type === "set") {
+                    setValidity(chosen);
+                  }
+                }}
+              />
+            </View>
+            {Platform.OS === "ios" ? (
+              <Pressable
+                onPress={() => setShowDatePicker(false)}
+                className="mt-4 items-center rounded-2xl bg-button-primary px-4 py-3"
+              >
+                <Text className="text-sm font-semibold text-white">
+                  Confirmar
+                </Text>
+              </Pressable>
+            ) : null}
           </Pressable>
         </Pressable>
       </Modal>

@@ -41,7 +41,15 @@ export const formatCurrencyBR = (value: number | string | null | undefined) => {
   const numeric =
     typeof value === "number"
       ? value
-      : Number(String(value).replace(/\./g, "").replace(",", "."));
+      : (() => {
+          const raw = String(value).trim();
+          if (!raw) return 0;
+          const normalized = raw.includes(",")
+            ? raw.replace(/\./g, "").replace(",", ".")
+            : raw;
+          const parsed = Number(normalized);
+          return Number.isFinite(parsed) ? parsed : 0;
+        })();
   const safe = Number.isFinite(numeric) ? numeric : 0;
   try {
     return new Intl.NumberFormat("pt-BR", {

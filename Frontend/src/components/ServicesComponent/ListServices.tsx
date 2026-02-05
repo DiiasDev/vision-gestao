@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ServicesRealizedForm from "./ServicesRealizedForm";
 import FormComponent from "../FormComponent/FormComponent";
 import { fieldsServices } from "../../Fields/ServicesForm";
+import ListOrder from "../OrderComponents/ListOrder";
 import {
   ServicesService,
   type Service,
@@ -99,6 +100,9 @@ export default function ListServices() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [activeSection, setActiveSection] = useState<"servicos" | "orcamentos">(
+    "servicos"
+  );
 
   const loadServices = useCallback(async (silent?: boolean) => {
     if (!silent) setLoading(true);
@@ -245,6 +249,36 @@ export default function ListServices() {
           Separe o catálogo de serviços do histórico de atendimentos realizados.
         </Text>
 
+        <View className="mt-4 flex-row gap-2">
+          {[
+            { key: "servicos", label: "Serviços" },
+            { key: "orcamentos", label: "Orçamentos" },
+          ].map((item) => {
+            const isActive = activeSection === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() =>
+                  setActiveSection(item.key as typeof activeSection)
+                }
+                className={`flex-1 rounded-full border px-4 py-2 ${
+                  isActive
+                    ? "border-transparent bg-button-primary"
+                    : "border-divider bg-card-background"
+                }`}
+              >
+                <Text
+                  className={`text-center text-xs font-semibold ${
+                    isActive ? "text-white" : "text-text-secondary"
+                  }`}
+                >
+                  {item.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <View className="mt-6 flex-row gap-3">
           <View className="flex-1 rounded-2xl border border-divider bg-card-background px-4 py-3">
             <Text className="text-xs text-text-secondary">
@@ -295,14 +329,19 @@ export default function ListServices() {
         </View>
       </View>
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 140 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
+      {activeSection === "orcamentos" ? (
+        <View className="flex-1">
+          <ListOrder />
+        </View>
+      ) : (
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 140 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
         <View className="mt-6">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-semibold text-text-primary">
@@ -663,7 +702,8 @@ export default function ListServices() {
             ) : null}
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      )}
 
       <Modal
         visible={isServiceFormOpen}
