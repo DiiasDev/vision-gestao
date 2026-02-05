@@ -11,6 +11,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 export type NewActionKey =
   | "products"
   | "services"
+  | "services_realized"
   | "budgets"
   | "transactions"
   | "clients";
@@ -65,11 +66,19 @@ export default function NewScreenComponent({
       },
       {
         key: "services",
-        title: "Serviço",
-        subtitle: "Registre ordens de serviço e atividades.",
+        title: "Serviço (catálogo)",
+        subtitle: "Cadastre serviços para o catálogo.",
         icon: { family: "MaterialCommunityIcons", name: "tools" },
         tag: "Operações",
         accent: "#DCFCE7",
+      },
+      {
+        key: "services_realized",
+        title: "Serviço realizado",
+        subtitle: "Registre atendimentos concluídos.",
+        icon: { family: "MaterialCommunityIcons", name: "clipboard-check" },
+        tag: "Execução",
+        accent: "#E0F2FE",
       },
       {
         key: "budgets",

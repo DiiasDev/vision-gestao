@@ -32,6 +32,24 @@ const normalizeImage = (imagem?: ProductPayload["imagem"]) => {
   return imagem.uri ?? null;
 };
 
+const normalizeImageData = (imagem?: string | null) => {
+  if (!imagem) return null;
+  const trimmed = String(imagem).trim();
+  if (!trimmed) return null;
+  if (
+    trimmed.startsWith("data:image/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("file://") ||
+    trimmed.startsWith("content://")
+  ) {
+    return trimmed;
+  }
+  const looksLikeBase64 =
+    trimmed.length > 40 && /^[A-Za-z0-9+/=\s]+$/.test(trimmed);
+  return looksLikeBase64 ? `data:image/jpeg;base64,${trimmed}` : trimmed;
+};
+
 export class ProductsService {
   private static baseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -111,10 +129,15 @@ export class ProductsService {
         };
       }
 
+      const normalizedProducts = (data?.products ?? []).map((product: Product) => ({
+        ...product,
+        imagem: normalizeImageData(product?.imagem ?? null),
+      }));
+
       return {
         success: true,
         message: data?.message ?? "Lista de produtos",
-        products: data?.products ?? [],
+        products: normalizedProducts,
       };
     } catch (error: any) {
       console.error("Erro ao listar produtos: ", error);

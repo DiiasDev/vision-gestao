@@ -32,7 +32,92 @@ const normalizeImage = (imagem?: ServicePayload["imagem"]) => {
   return imagem.uri ?? null;
 };
 
+const normalizeImageData = (imagem?: string | null) => {
+  if (!imagem) return null;
+  const trimmed = String(imagem).trim();
+  if (!trimmed) return null;
+  if (
+    trimmed.startsWith("data:image/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("file://") ||
+    trimmed.startsWith("content://")
+  ) {
+    return trimmed;
+  }
+  const looksLikeBase64 =
+    trimmed.length > 40 && /^[A-Za-z0-9+/=\s]+$/.test(trimmed);
+  return looksLikeBase64 ? `data:image/jpeg;base64,${trimmed}` : trimmed;
+};
+
 export class ServicesService {
+  static async createServiceRealized(payload: {
+    client_name?: string | null;
+    client_contact?: string | null;
+    service_name?: string | null;
+    equipment?: string | null;
+    description?: string | null;
+    service_date?: string | null;
+    status?: string | null;
+    value?: number | null;
+    items?: {
+      product_id?: string | number | null;
+      product_name?: string | null;
+      quantity?: number | null;
+      price?: number | null;
+    }[];
+    notes?: string | null;
+  }) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/services/realized`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          client_name: payload.client_name ?? null,
+          client_contact: payload.client_contact ?? null,
+          service_name: payload.service_name ?? null,
+          equipment: payload.equipment ?? null,
+          description: payload.description ?? null,
+          service_date: payload.service_date ?? null,
+          status: payload.status ?? null,
+          value: payload.value ?? null,
+          items: payload.items ?? [],
+          notes: payload.notes ?? null,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao registrar serviço",
+        };
+      }
+
+      return data ?? { success: true };
+    } catch (error: any) {
+      console.error("Erro ao registrar serviço: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
   static async getServices() {
     try {
       const controller = new AbortController();
@@ -62,10 +147,16 @@ export class ServicesService {
         };
       }
 
+      const rawServices = data?.services ?? data?.servicos ?? data?.result ?? [];
+      const normalizedServices = rawServices.map((service: Service) => ({
+        ...service,
+        imagem: normalizeImageData(service?.imagem ?? null),
+      }));
+
       return {
         success: true,
         message: data?.message ?? "Lista de serviços",
-        services: data?.services ?? data?.servicos ?? data?.result ?? [],
+        services: normalizedServices,
       };
     } catch (error: any) {
       console.error("Erro ao listar serviços: ", error);

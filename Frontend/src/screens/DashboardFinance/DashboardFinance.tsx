@@ -9,6 +9,7 @@ import ProductsScreen from "../ProductsScreen/ProductsScreen";
 import ProductForm from "../../components/ProductsComponents/ProductForm";
 import ServicesForm from "../../components/ServicesComponent/ServicesForm";
 import ListServices from "../../components/ServicesComponent/ListServices";
+import ServicesRealizedForm from "../../components/ServicesComponent/ServicesRealizedForm";
 import OrderForm from "../../components/OrderComponents/OrderForm";
 import FinanceMovimentForm from "../../components/FinanceComponents/FinanceMovimentForm";
 import ClientForm from "../../components/ClientsComponent/ClientForm";
@@ -90,11 +91,13 @@ export default function DashboardFinance({
                 ? "Novo produto"
                 : activeNewForm === "services"
                   ? "Novo serviço"
+                : activeNewForm === "services_realized"
+                    ? "Serviço realizado"
                 : activeNewForm === "budgets"
-                    ? "Novo orçamento"
-                    : activeNewForm === "clients"
-                      ? "Novo cliente"
-                      : "Nova movimentação"}
+                      ? "Novo orçamento"
+                      : activeNewForm === "clients"
+                        ? "Novo cliente"
+                        : "Nova movimentação"}
             </Text>
             <Pressable
               onPress={() => setActiveNewForm(null)}
@@ -108,6 +111,9 @@ export default function DashboardFinance({
           ) : null}
           {activeNewForm === "services" ? (
             <ServicesForm onBack={() => setActiveNewForm(null)} />
+          ) : null}
+          {activeNewForm === "services_realized" ? (
+            <ServicesRealizedForm onBack={() => setActiveNewForm(null)} />
           ) : null}
           {activeNewForm === "budgets" ? (
             <OrderForm onBack={() => setActiveNewForm(null)} />
