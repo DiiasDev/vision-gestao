@@ -1,5 +1,9 @@
 import { DB } from "../../../database/conn.js";
-import { type ServicesTypes } from "../../types/Services/Services.types.js";
+import {
+  type ServicesTypes,
+  type ServiceRealizedPayload,
+  type ServiceRealizedItem,
+} from "../../types/Services/Services.types.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +23,45 @@ const getDefaultServiceImage = () => {
 };
 
 const defaultServiceImage = getDefaultServiceImage();
+
+const normalizeNumber = (value: unknown) => {
+  if (value === undefined || value === null || value === "") return 0;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  const raw = String(value).trim();
+  if (!raw) return 0;
+  const normalized = raw.replace(/\./g, "").replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeBoolean = (value: unknown) => {
+  if (value === true || value === 1 || value === "1") return true;
+  if (value === false || value === 0 || value === "0") return false;
+  return null;
+};
+
+const normalizeText = (value: unknown) => {
+  if (value === undefined || value === null) return null;
+  const trimmed = String(value).trim();
+  return trimmed ? trimmed : null;
+};
+
+const buildItemPayload = (item: ServiceRealizedItem) => {
+  const quantity = normalizeNumber(item.quantity);
+  const price = normalizeNumber(item.price);
+  const cost = normalizeNumber(item.cost);
+  return {
+    product_id: item.product_id ?? null,
+    product_name: normalizeText(item.product_name),
+    quantity,
+    price,
+    total: quantity * price,
+    cost,
+    total_cost: quantity * cost,
+  };
+};
 
 export class ServicesService {
   public async newService(novo_servico: Partial<ServicesTypes>) {
@@ -74,6 +117,99 @@ export class ServicesService {
     }
   }
 
+  public async updateService(id: string, servico: Partial<ServicesTypes>) {
+    try {
+      const pool = DB.connect();
+      if (!id) {
+        return {
+          success: false,
+          message: "Id do serviço é obrigatório",
+        };
+      }
+
+      const {
+        nome_servico,
+        categoria,
+        preco,
+        prazo,
+        descricao,
+        imagem,
+        status,
+      } = servico;
+
+      const normalizedImage =
+        imagem && String(imagem).trim() ? imagem : defaultServiceImage;
+
+      const query = `
+        UPDATE servicos
+        SET
+          nome_servico = $1,
+          categoria = $2,
+          preco = $3,
+          prazo = $4,
+          descricao = $5,
+          imagem = $6,
+          status = $7
+        WHERE id = $8
+        RETURNING *;
+      `;
+
+      const values = [
+        nome_servico ?? null,
+        categoria ?? null,
+        preco ?? null,
+        prazo ?? null,
+        descricao ?? null,
+        normalizedImage,
+        normalizeBoolean(status) ?? true,
+        id,
+      ];
+
+      const result = await pool.query(query, values);
+
+      return {
+        success: true,
+        message: "Serviço atualizado com sucesso",
+        service: result.rows[0] ?? null,
+      };
+    } catch (error: any) {
+      console.error("Erro ao atualizar serviço:", error);
+      return {
+        success: false,
+        message: "Erro ao atualizar serviço",
+      };
+    }
+  }
+
+  public async deleteService(id: string) {
+    try {
+      const pool = DB.connect();
+      if (!id) {
+        return {
+          success: false,
+          message: "Id do serviço é obrigatório",
+        };
+      }
+
+      const result = await pool.query(
+        "DELETE FROM servicos WHERE id = $1 RETURNING *",
+        [id]
+      );
+
+      return {
+        success: true,
+        message: "Serviço excluído com sucesso",
+        service: result.rows[0] ?? null,
+      };
+    } catch (error: any) {
+      console.error("Erro ao excluir serviço:", error);
+      return {
+        success: false,
+        message: "Erro ao excluir serviço",
+      };
+    }
+  }
+
   public async getServices() {
     try {
       const pool = DB.connect();
@@ -93,6 +229,320 @@ export class ServicesService {
         success: false,
         message: "erro ao listar serviços",
         servicos: [],
+      };
+    }
+  }
+
+  public async createServiceRealized(payload: ServiceRealizedPayload) {
+    const pool = DB.connect();
+    try {
+      const items = Array.isArray(payload.items)
+        ? payload.items.map(buildItemPayload)
+        : [];
+
+      const valueService = normalizeNumber(payload.value);
+      const valueProducts = items.reduce((acc, item) => acc + item.total, 0);
+      const valueTotal = valueService + valueProducts;
+
+      const costService = normalizeNumber(payload.cost);
+      const costProducts = items.reduce((acc, item) => acc + item.total_cost, 0);
+      const costTotal = costService + costProducts;
+
+      await pool.query("BEGIN");
+
+      const insertService = `
+        INSERT INTO servicos_realizados (
+          cliente_id,
+          cliente_nome,
+          contato,
+          servico_id,
+          servico_nome,
+          equipamento,
+          descricao,
+          data_servico,
+          status,
+          valor_servico,
+          valor_produtos,
+          valor_total,
+          custo_servico,
+          custo_produtos,
+          custo_total,
+          observacoes
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+        )
+        RETURNING *;
+      `;
+
+      const serviceValues = [
+        normalizeText(payload.client_id),
+        normalizeText(payload.client_name),
+        normalizeText(payload.client_contact),
+        normalizeText(payload.service_id),
+        normalizeText(payload.service_name) ?? "Serviço realizado",
+        normalizeText(payload.equipment),
+        normalizeText(payload.description),
+        normalizeText(payload.service_date),
+        normalizeText(payload.status) ?? "concluido",
+        valueService,
+        valueProducts,
+        valueTotal,
+        costService,
+        costProducts,
+        costTotal,
+        normalizeText(payload.notes),
+      ];
+
+      const serviceResult = await pool.query(insertService, serviceValues);
+      const realized = serviceResult.rows[0];
+
+      if (items.length) {
+        const insertItem = `
+          INSERT INTO servicos_realizados_itens (
+            servico_realizado_id,
+            produto_id,
+            produto_nome,
+            quantidade,
+            preco_unitario,
+            total_item,
+            custo_unitario,
+            total_custo_item
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8
+          );
+        `;
+
+        for (const item of items) {
+          await pool.query(insertItem, [
+            realized.id,
+            item.product_id,
+            item.product_name ?? "Produto",
+            item.quantity,
+            item.price,
+            item.total,
+            item.cost,
+            item.total_cost,
+          ]);
+        }
+      }
+
+      await pool.query("COMMIT");
+
+      return {
+        success: true,
+        message: "Serviço realizado registrado com sucesso",
+        service_realized: realized,
+        items: items,
+      };
+    } catch (error: any) {
+      await pool.query("ROLLBACK");
+      console.error("Erro ao registrar serviço realizado:", error);
+      return {
+        success: false,
+        message: "Erro ao registrar serviço realizado",
+      };
+    }
+  }
+
+  public async updateServiceRealized(id: string, payload: ServiceRealizedPayload) {
+    const pool = DB.connect();
+    try {
+      if (!id) {
+        return {
+          success: false,
+          message: "Id do serviço realizado é obrigatório",
+        };
+      }
+
+      const items = Array.isArray(payload.items)
+        ? payload.items.map(buildItemPayload)
+        : [];
+
+      const valueService = normalizeNumber(payload.value);
+      const valueProducts = items.reduce((acc, item) => acc + item.total, 0);
+      const valueTotal = valueService + valueProducts;
+
+      const costService = normalizeNumber(payload.cost);
+      const costProducts = items.reduce((acc, item) => acc + item.total_cost, 0);
+      const costTotal = costService + costProducts;
+
+      await pool.query("BEGIN");
+
+      const updateService = `
+        UPDATE servicos_realizados
+        SET
+          cliente_id = $1,
+          cliente_nome = $2,
+          contato = $3,
+          servico_id = $4,
+          servico_nome = $5,
+          equipamento = $6,
+          descricao = $7,
+          data_servico = $8,
+          status = $9,
+          valor_servico = $10,
+          valor_produtos = $11,
+          valor_total = $12,
+          custo_servico = $13,
+          custo_produtos = $14,
+          custo_total = $15,
+          observacoes = $16,
+          atualizado_em = NOW()
+        WHERE id = $17
+        RETURNING *;
+      `;
+
+      const serviceValues = [
+        normalizeText(payload.client_id),
+        normalizeText(payload.client_name),
+        normalizeText(payload.client_contact),
+        normalizeText(payload.service_id),
+        normalizeText(payload.service_name) ?? "Serviço realizado",
+        normalizeText(payload.equipment),
+        normalizeText(payload.description),
+        normalizeText(payload.service_date),
+        normalizeText(payload.status) ?? "concluido",
+        valueService,
+        valueProducts,
+        valueTotal,
+        costService,
+        costProducts,
+        costTotal,
+        normalizeText(payload.notes),
+        id,
+      ];
+
+      const serviceResult = await pool.query(updateService, serviceValues);
+      const realized = serviceResult.rows[0];
+
+      await pool.query(
+        "DELETE FROM servicos_realizados_itens WHERE servico_realizado_id = $1",
+        [id]
+      );
+
+      if (items.length) {
+        const insertItem = `
+          INSERT INTO servicos_realizados_itens (
+            servico_realizado_id,
+            produto_id,
+            produto_nome,
+            quantidade,
+            preco_unitario,
+            total_item,
+            custo_unitario,
+            total_custo_item
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8
+          );
+        `;
+
+        for (const item of items) {
+          await pool.query(insertItem, [
+            realized.id,
+            item.product_id,
+            item.product_name ?? "Produto",
+            item.quantity,
+            item.price,
+            item.total,
+            item.cost,
+            item.total_cost,
+          ]);
+        }
+      }
+
+      await pool.query("COMMIT");
+
+      return {
+        success: true,
+        message: "Serviço realizado atualizado com sucesso",
+        service_realized: realized,
+        items,
+      };
+    } catch (error: any) {
+      await pool.query("ROLLBACK");
+      console.error("Erro ao atualizar serviço realizado:", error);
+      return {
+        success: false,
+        message: "Erro ao atualizar serviço realizado",
+      };
+    }
+  }
+
+  public async deleteServiceRealized(id: string) {
+    try {
+      const pool = DB.connect();
+      if (!id) {
+        return {
+          success: false,
+          message: "Id do serviço realizado é obrigatório",
+        };
+      }
+
+      const result = await pool.query(
+        "DELETE FROM servicos_realizados WHERE id = $1 RETURNING *",
+        [id]
+      );
+
+      return {
+        success: true,
+        message: "Serviço realizado excluído com sucesso",
+        service_realized: result.rows[0] ?? null,
+      };
+    } catch (error: any) {
+      console.error("Erro ao excluir serviço realizado:", error);
+      return {
+        success: false,
+        message: "Erro ao excluir serviço realizado",
+      };
+    }
+  }
+
+  public async getServicesRealized() {
+    try {
+      const pool = DB.connect();
+      const servicesResult = await pool.query(
+        `SELECT * FROM servicos_realizados ORDER BY criado_em DESC`
+      );
+      const services = servicesResult.rows ?? [];
+
+      if (!services.length) {
+        return {
+          success: true,
+          message: "Serviços realizados listados",
+          services_realized: [],
+        };
+      }
+
+      const ids = services.map((service) => service.id);
+      const itemsResult = await pool.query(
+        `SELECT * FROM servicos_realizados_itens WHERE servico_realizado_id = ANY($1::uuid[])`,
+        [ids]
+      );
+      const items = itemsResult.rows ?? [];
+
+      const itemsByService = items.reduce((acc, item) => {
+        const key = item.servico_realizado_id;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      }, {} as Record<string, typeof items>);
+
+      const enriched = services.map((service) => ({
+        ...service,
+        items: itemsByService[service.id] ?? [],
+      }));
+
+      return {
+        success: true,
+        message: "Serviços realizados listados",
+        services_realized: enriched,
+      };
+    } catch (error: any) {
+      console.error("Erro ao listar serviços realizados:", error);
+      return {
+        success: false,
+        message: "Erro ao listar serviços realizados",
+        services_realized: [],
       };
     }
   }

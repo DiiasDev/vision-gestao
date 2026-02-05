@@ -15,10 +15,17 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { ClienteService, type Client } from "../../services/Clients.services";
 import { ProductsService, type Product } from "../../services/Products.services";
-import { ServicesService, type Service } from "../../services/Services.services";
+import {
+  ServicesService,
+  type Service,
+  type ServiceRealized,
+} from "../../services/Services.services";
+import { formatCurrencyBR } from "../../utils/formatter";
 
 type ServicesRealizedFormProps = {
   onBack?: () => void;
+  initialData?: ServiceRealized | null;
+  onSaved?: () => void;
 };
 
 type SelectOption = {
@@ -39,6 +46,7 @@ type ProductItem = {
   productKey?: string;
   quantity: string;
   price: string;
+  cost: string;
 };
 
 const toNumber = (value?: string | number | null) => {
@@ -49,16 +57,7 @@ const toNumber = (value?: string | number | null) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const formatCurrency = (value: number) => {
-  try {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  } catch {
-    return `R$ ${value.toFixed(2)}`;
-  }
-};
+const formatCurrency = formatCurrencyBR;
 
 const resolveSelectLabel = (
   value: string | undefined,
@@ -93,10 +92,13 @@ const createProductItem = (): ProductItem => ({
   productKey: undefined,
   quantity: "1",
   price: "",
+  cost: "",
 });
 
 export default function ServicesRealizedForm({
   onBack,
+  initialData,
+  onSaved,
 }: ServicesRealizedFormProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -125,6 +127,7 @@ export default function ServicesRealizedForm({
   const [status, setStatus] = useState<string>("concluido");
   const [notes, setNotes] = useState<string>("");
   const [serviceValue, setServiceValue] = useState<string>("");
+  const [serviceCost, setServiceCost] = useState<string>("");
   const [items, setItems] = useState<ProductItem[]>([createProductItem()]);
 
   useEffect(() => {
@@ -147,8 +150,61 @@ export default function ServicesRealizedForm({
       setLoadingData(false);
     };
 
-    loadData();
+      loadData();
   }, []);
+
+  useEffect(() => {
+    if (!initialData) return;
+    setSelectedClientKey(initialData.cliente_nome ?? "");
+    setContact(initialData.contato ?? "");
+    setSelectedServiceKey(
+      initialData.servico_id
+        ? String(initialData.servico_id)
+        : initialData.servico_nome ?? undefined
+    );
+    setManualServiceName(initialData.servico_id ? "" : initialData.servico_nome ?? "");
+    setEquipment(initialData.equipamento ?? "");
+    setDescription(initialData.descricao ?? "");
+    setServiceDate(
+      initialData.data_servico ? new Date(initialData.data_servico) : null
+    );
+    setStatus(initialData.status ?? "concluido");
+    setNotes(initialData.observacoes ?? "");
+    setServiceValue(
+      initialData.valor_servico !== null && initialData.valor_servico !== undefined
+        ? String(initialData.valor_servico)
+        : ""
+    );
+    setServiceCost(
+      initialData.custo_servico !== null && initialData.custo_servico !== undefined
+        ? String(initialData.custo_servico)
+        : ""
+    );
+
+    if (initialData.items?.length) {
+      setItems(
+        initialData.items.map((item) => ({
+          key: item.id ?? `${item.produto_id ?? Math.random()}`,
+          productKey:
+            item.produto_id !== undefined && item.produto_id !== null
+              ? String(item.produto_id)
+              : undefined,
+          quantity:
+            item.quantidade !== null && item.quantidade !== undefined
+              ? String(item.quantidade)
+              : "1",
+          price:
+            item.preco_unitario !== null && item.preco_unitario !== undefined
+              ? String(item.preco_unitario)
+              : "",
+          cost:
+            item.custo_unitario !== null && item.custo_unitario !== undefined
+              ? String(item.custo_unitario)
+              : "",
+        }))
+      );
+    }
+  }, [initialData]);
 
   const clientOptions = useMemo<SelectOption[]>(() => {
     return clients.map((client) => ({
@@ -160,7 +216,7 @@ export default function ServicesRealizedForm({
 
   const serviceOptions = useMemo<SelectOption[]>(() => {
     return services.map((service) => ({
-      value: service.nome_servico,
+      value: String(service.id ?? service.nome_servico),
       label: service.nome_servico,
       subtitle: service.categoria ?? "Sem categoria",
     }));
@@ -195,9 +251,15 @@ export default function ServicesRealizedForm({
     },
   ];
 
-  const selectedService = services.find(
-    (service) => service.nome_servico === selectedServiceKey
-  );
+  const resolveServiceByKey = (key?: string) => {
+    if (!key) return undefined;
+    return services.find((service) => {
+      const candidate = String(service.id ?? service.nome_servico);
+      return candidate === key;
+    });
+  };
+
+  const selectedService = resolveServiceByKey(selectedServiceKey);
 
   const resolveProductByKey = (key?: string) => {
     if (!key) return undefined;
@@ -225,8 +287,16 @@ export default function ServicesRealizedForm({
     return acc + quantity * price;
   }, 0);
 
+  const productsCostTotal = items.reduce((acc, item) => {
+    const quantity = toNumber(item.quantity);
+    const cost = toNumber(item.cost);
+    return acc + quantity * cost;
+  }, 0);
+
   const baseServiceValue = toNumber(serviceValue || (selectedService?.preco ?? 0));
   const totalValue = baseServiceValue + productsTotal;
+  const baseServiceCost = toNumber(serviceCost);
+  const totalCost = baseServiceCost + productsCostTotal;
 
   const handleSubmit = async () => {
     if (!selectedClientKey) {
@@ -257,23 +327,33 @@ export default function ServicesRealizedForm({
           product_name: product?.nome ?? null,
           quantity: toNumber(item.quantity),
           price: toNumber(item.price),
+          cost: toNumber(item.cost),
         };
       });
 
-    const result = await ServicesService.createServiceRealized({
+    const payload = {
+      client_id:
+        clients.find((client) => client.nome_completo === selectedClientKey)?.id ??
+        null,
       client_name: selectedClientKey,
       client_contact: contact,
-      service_name: selectedServiceKey ?? manualServiceName,
+      service_id: selectedService?.id ? String(selectedService.id) : null,
+      service_name: selectedService?.nome_servico ?? manualServiceName,
       equipment,
       description,
       service_date: serviceDate
         ? serviceDate.toLocaleDateString("pt-BR")
         : null,
       status,
-      value: totalValue,
+      value: baseServiceValue,
+      cost: baseServiceCost,
       items: itemsPayload,
       notes,
-    });
+    };
+
+    const result = initialData?.id
+      ? await ServicesService.updateServiceRealized(initialData.id, payload)
+      : await ServicesService.createServiceRealized(payload);
 
     setSaving(false);
 
@@ -283,6 +363,7 @@ export default function ServicesRealizedForm({
         title: "Serviço registrado",
         message: "O serviço realizado foi salvo com sucesso.",
       });
+      onSaved?.();
       return;
     }
 
@@ -395,9 +476,7 @@ export default function ServicesRealizedForm({
                 serviceOptions,
                 (value) => {
                   setSelectedServiceKey(value);
-                  const service = services.find(
-                    (item) => item.nome_servico === value
-                  );
+                  const service = resolveServiceByKey(value);
                   if (service?.preco) {
                     setServiceValue(String(service.preco));
                   }
@@ -489,6 +568,11 @@ export default function ServicesRealizedForm({
                                     price: String(product.preco_venda),
                                   });
                                 }
+                                if (product?.custo && !item.cost) {
+                                  updateItem(item.key, {
+                                    cost: String(product.custo),
+                                  });
+                                }
                               },
                             })
                           }
@@ -559,6 +643,19 @@ export default function ServicesRealizedForm({
                             }
                           />
                         </View>
+                        <View className="flex-1 rounded-2xl border border-divider bg-card-background px-3 py-3">
+                          <Text className="text-xs text-text-secondary">
+                            Custo
+                          </Text>
+                          <TextInput
+                            className="mt-1 text-sm font-semibold text-text-primary"
+                            keyboardType="numeric"
+                            value={item.cost}
+                            onChangeText={(text) =>
+                              updateItem(item.key, { cost: text })
+                            }
+                          />
+                        </View>
                       </View>
                     </View>
                   );
@@ -614,6 +711,25 @@ export default function ServicesRealizedForm({
 
                 <View className="rounded-2xl border border-divider bg-background-secondary px-4 py-3">
                   <Text className="text-xs text-text-secondary">
+                    Custo do serviço
+                  </Text>
+                  <View className="mt-2 flex-row items-center justify-between">
+                    <TextInput
+                      className="flex-1 text-base font-semibold text-text-primary"
+                      placeholder="0,00"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numeric"
+                      value={serviceCost}
+                      onChangeText={setServiceCost}
+                    />
+                    <Text className="text-sm text-text-tertiary">
+                      {formatCurrency(baseServiceCost)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="rounded-2xl border border-divider bg-background-secondary px-4 py-3">
+                  <Text className="text-xs text-text-secondary">
                     Valor total (serviço + produtos)
                   </Text>
                   <View className="mt-2 flex-row items-center justify-between">
@@ -622,6 +738,20 @@ export default function ServicesRealizedForm({
                     </Text>
                     <Text className="text-xs text-text-tertiary">
                       Produtos: {formatCurrency(productsTotal)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="rounded-2xl border border-divider bg-background-secondary px-4 py-3">
+                  <Text className="text-xs text-text-secondary">
+                    Custo total (serviço + produtos)
+                  </Text>
+                  <View className="mt-2 flex-row items-center justify-between">
+                    <Text className="text-base font-semibold text-text-primary">
+                      {formatCurrency(totalCost)}
+                    </Text>
+                    <Text className="text-xs text-text-tertiary">
+                      Produtos: {formatCurrency(productsCostTotal)}
                     </Text>
                   </View>
                 </View>

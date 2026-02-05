@@ -11,7 +11,43 @@ export type ServicePayload = {
   ativo?: boolean | number;
 };
 
-export type Service = ServicesTypes;
+export type Service = ServicesTypes & {
+  id?: string | number;
+};
+
+export type ServiceRealizedItem = {
+  id?: string;
+  servico_realizado_id?: string;
+  produto_id?: number | null;
+  produto_nome?: string | null;
+  quantidade?: number | null;
+  preco_unitario?: number | null;
+  total_item?: number | null;
+  custo_unitario?: number | null;
+  total_custo_item?: number | null;
+};
+
+export type ServiceRealized = {
+  id: string;
+  cliente_id?: string | null;
+  cliente_nome: string;
+  contato?: string | null;
+  servico_id?: string | null;
+  servico_nome: string;
+  equipamento?: string | null;
+  descricao?: string | null;
+  data_servico?: string | null;
+  status?: string | null;
+  valor_servico?: number | null;
+  valor_produtos?: number | null;
+  valor_total?: number | null;
+  custo_servico?: number | null;
+  custo_produtos?: number | null;
+  custo_total?: number | null;
+  observacoes?: string | null;
+  criado_em?: string | null;
+  items?: ServiceRealizedItem[];
+};
 
 const getBaseUrl = () =>
   process.env.EXPO_PUBLIC_API_URL ??
@@ -52,19 +88,23 @@ const normalizeImageData = (imagem?: string | null) => {
 
 export class ServicesService {
   static async createServiceRealized(payload: {
+    client_id?: string | null;
     client_name?: string | null;
     client_contact?: string | null;
+    service_id?: string | null;
     service_name?: string | null;
     equipment?: string | null;
     description?: string | null;
     service_date?: string | null;
     status?: string | null;
     value?: number | null;
+    cost?: number | null;
     items?: {
       product_id?: string | number | null;
       product_name?: string | null;
       quantity?: number | null;
       price?: number | null;
+      cost?: number | null;
     }[];
     notes?: string | null;
   }) {
@@ -77,14 +117,17 @@ export class ServicesService {
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
+          client_id: payload.client_id ?? null,
           client_name: payload.client_name ?? null,
           client_contact: payload.client_contact ?? null,
+          service_id: payload.service_id ?? null,
           service_name: payload.service_name ?? null,
           equipment: payload.equipment ?? null,
           description: payload.description ?? null,
           service_date: payload.service_date ?? null,
           status: payload.status ?? null,
           value: payload.value ?? null,
+          cost: payload.cost ?? null,
           items: payload.items ?? [],
           notes: payload.notes ?? null,
         }),
@@ -169,6 +212,167 @@ export class ServicesService {
     }
   }
 
+  static async getServicesRealized() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/services/realized`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar serviços realizados",
+          services_realized: [],
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message ?? "Lista de serviços realizados",
+        services_realized: data?.services_realized ?? [],
+      };
+    } catch (error: any) {
+      console.error("Erro ao listar serviços realizados: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        services_realized: [],
+      };
+    }
+  }
+
+  static async updateServiceRealized(
+    id: string,
+    payload: {
+      client_id?: string | null;
+      client_name?: string | null;
+      client_contact?: string | null;
+      service_id?: string | null;
+      service_name?: string | null;
+      equipment?: string | null;
+      description?: string | null;
+      service_date?: string | null;
+      status?: string | null;
+      value?: number | null;
+      cost?: number | null;
+      items?: {
+        product_id?: string | number | null;
+        product_name?: string | null;
+        quantity?: number | null;
+        price?: number | null;
+        cost?: number | null;
+      }[];
+      notes?: string | null;
+    }
+  ) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/services/realized/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          client_id: payload.client_id ?? null,
+          client_name: payload.client_name ?? null,
+          client_contact: payload.client_contact ?? null,
+          service_id: payload.service_id ?? null,
+          service_name: payload.service_name ?? null,
+          equipment: payload.equipment ?? null,
+          description: payload.description ?? null,
+          service_date: payload.service_date ?? null,
+          status: payload.status ?? null,
+          value: payload.value ?? null,
+          cost: payload.cost ?? null,
+          items: payload.items ?? [],
+          notes: payload.notes ?? null,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao atualizar serviço realizado",
+        };
+      }
+
+      return data ?? { success: true };
+    } catch (error: any) {
+      console.error("Erro ao atualizar serviço realizado: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
+  static async deleteServiceRealized(id: string) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/services/realized/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao excluir serviço realizado",
+        };
+      }
+
+      return data ?? { success: true };
+    } catch (error: any) {
+      console.error("Erro ao excluir serviço realizado: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
   static async createService(payload: ServicePayload) {
     try {
       const controller = new AbortController();
@@ -216,6 +420,98 @@ export class ServicesService {
       return data ?? { success: true };
     } catch (error: any) {
       console.error("Erro ao cadastrar serviço: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
+  static async updateService(id: string, payload: ServicePayload) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/services/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          nome_servico: payload.nome ?? null,
+          categoria: payload.categoria ?? null,
+          preco: toNumberOrNull(payload.preco),
+          prazo: payload.prazo ?? null,
+          descricao: payload.descricao ?? null,
+          imagem: normalizeImage(payload.imagem),
+          status:
+            payload.ativo === true || payload.ativo === 1
+              ? true
+              : payload.ativo === false || payload.ativo === 0
+                ? false
+                : null,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao atualizar serviço",
+        };
+      }
+
+      return data ?? { success: true };
+    } catch (error: any) {
+      console.error("Erro ao atualizar serviço: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
+  static async deleteService(id: string) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/services/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao excluir serviço",
+        };
+      }
+
+      return data ?? { success: true };
+    } catch (error: any) {
+      console.error("Erro ao excluir serviço: ", error);
       const isAbort = error?.name === "AbortError";
       return {
         success: false,
