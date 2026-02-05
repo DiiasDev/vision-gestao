@@ -85,4 +85,18 @@ export class OrderController {
       });
     }
   }
+
+  async exportOrder(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const result = await this.service.exportOrderToWhatsapp(id);
+      return res.status(200).json(result);
+    } catch (error: any) {
+      console.error("erro ao exportar orçamento", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao exportar orçamento",
+      });
+    }
+  }
 }

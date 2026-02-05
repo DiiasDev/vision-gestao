@@ -1,5 +1,6 @@
 import { DB } from "../../../database/conn.js";
 import { type OrderPayload, type OrderItemPayload } from "../../types/Order/Order.types.js";
+import PDFDocument from "pdfkit";
 
 const normalizeNumber = (value: unknown) => {
   if (value === undefined || value === null || value === "") return 0;
@@ -17,6 +18,50 @@ const normalizeText = (value: unknown) => {
   if (value === undefined || value === null) return null;
   const trimmed = String(value).trim();
   return trimmed ? trimmed : null;
+};
+
+const normalizePhone = (value?: string | null) => {
+  if (!value) return null;
+  const digits = String(value).replace(/\D+/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("55")) return digits;
+  if (digits.length === 11) return `55${digits}`;
+  return digits;
+};
+
+const generateOrderPdf = async (order: any, items: any[]) => {
+  const doc = new PDFDocument({ size: "A4", margin: 40 });
+  const chunks: Buffer[] = [];
+  doc.on("data", (chunk) => chunks.push(chunk));
+
+  doc.fontSize(18).text("Orçamento", { align: "left" });
+  doc.moveDown(0.5);
+  doc.fontSize(10).text(`ID: ${order.id}`);
+  doc.text(`Cliente: ${order.cliente_nome ?? "-"}`);
+  doc.text(`Contato: ${order.contato ?? "-"}`);
+  doc.text(`Equipamento: ${order.equipamento ?? "-"}`);
+  doc.text(`Problema: ${order.problema ?? "-"}`);
+  doc.text(`Serviço: ${order.servico_descricao ?? "-"}`);
+  doc.text(`Validade: ${order.validade ?? "-"}`);
+  doc.text(`Status: ${order.status ?? "-"}`);
+  doc.moveDown(0.5);
+  doc.fontSize(12).text("Resumo financeiro");
+  doc.fontSize(10).text(`Valor do serviço: R$ ${order.valor_servico ?? 0}`);
+  doc.text(`Valor dos itens: R$ ${order.valor_itens ?? 0}`);
+  doc.text(`Valor total: R$ ${order.valor_total ?? 0}`);
+
+  doc.moveDown(0.5);
+  doc.fontSize(12).text("Itens");
+  items.forEach((item) => {
+    doc.fontSize(10).text(
+      `${item.produto_nome ?? "Produto"} - Qtd: ${item.quantidade ?? 0} - R$ ${item.preco_unitario ?? 0} - Total: R$ ${item.total_item ?? 0}`
+    );
+  });
+
+  doc.end();
+  return new Promise<Buffer>((resolve) => {
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+  });
 };
 
 const buildItemPayload = (item: OrderItemPayload) => {
@@ -48,6 +93,19 @@ export class OrderService {
 
       await pool.query("BEGIN");
 
+      let serviceDescription = normalizeText(payload.service_description);
+      if (!serviceDescription && payload.service_id) {
+        try {
+          const serviceResult = await pool.query(
+            "SELECT nome_servico FROM servicos WHERE id = $1",
+            [payload.service_id]
+          );
+          serviceDescription = serviceResult.rows[0]?.nome_servico ?? null;
+        } catch (error) {
+          console.error("Erro ao buscar nome do serviço:", error);
+        }
+      }
+
       const insertOrder = `
         INSERT INTO orcamentos (
           cliente_id,
@@ -76,7 +134,7 @@ export class OrderService {
         normalizeText(payload.equipment),
         normalizeText(payload.problem),
         normalizeText(payload.service_id),
-        normalizeText(payload.service_description),
+        serviceDescription,
         serviceValue,
         itemsTotal,
         estimatedValue,
@@ -205,6 +263,20 @@ export class OrderService {
 
       await pool.query("BEGIN");
 
+      let updateServiceDescription = normalizeText(payload.service_description);
+      if (!updateServiceDescription && payload.service_id) {
+        try {
+          const serviceResult = await pool.query(
+            "SELECT nome_servico FROM servicos WHERE id = $1",
+            [payload.service_id]
+          );
+          updateServiceDescription =
+            serviceResult.rows[0]?.nome_servico ?? null;
+        } catch (error) {
+          console.error("Erro ao buscar nome do serviço:", error);
+        }
+      }
+
       const updateOrder = `
         UPDATE orcamentos
         SET
@@ -233,7 +305,7 @@ export class OrderService {
         normalizeText(payload.equipment),
         normalizeText(payload.problem),
         normalizeText(payload.service_id),
-        normalizeText(payload.service_description),
+        updateServiceDescription,
         serviceValue,
         itemsTotal,
         estimatedValue,
@@ -448,6 +520,114 @@ export class OrderService {
       return {
         success: false,
         message: "Erro ao converter orçamento",
+      };
+    }
+  }
+
+  public async exportOrderToWhatsapp(id: string) {
+    try {
+      const pool = DB.connect();
+      const token = process.env.WHATSAPP_TOKEN;
+      const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+      if (!token || !phoneId) {
+        return {
+          success: false,
+          message:
+            "Configuração do WhatsApp ausente. Defina WHATSAPP_TOKEN e WHATSAPP_PHONE_NUMBER_ID.",
+        };
+      }
+
+      const orderResult = await pool.query(
+        "SELECT * FROM orcamentos WHERE id = $1",
+        [id]
+      );
+      const order = orderResult.rows[0];
+      if (!order) {
+        return { success: false, message: "Orçamento não encontrado" };
+      }
+
+      const itemsResult = await pool.query(
+        "SELECT * FROM orcamentos_itens WHERE orcamento_id = $1",
+        [id]
+      );
+      const items = itemsResult.rows ?? [];
+
+      const phone = normalizePhone(order.contato);
+      if (!phone) {
+        return {
+          success: false,
+          message: "Telefone do cliente não informado ou inválido",
+        };
+      }
+
+      const pdfBuffer = await generateOrderPdf(order, items);
+      const form = new FormData();
+      form.append("messaging_product", "whatsapp");
+      form.append(
+        "file",
+        new Blob([pdfBuffer], { type: "application/pdf" }),
+        `orcamento-${order.id}.pdf`
+      );
+      form.append("type", "application/pdf");
+
+      const mediaResponse = await fetch(
+        `https://graph.facebook.com/v19.0/${phoneId}/media`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: form,
+        }
+      );
+
+      const mediaData = await mediaResponse.json();
+      if (!mediaResponse.ok) {
+        return {
+          success: false,
+          message: mediaData?.error?.message ?? "Falha ao enviar mídia",
+        };
+      }
+
+      const sendResponse = await fetch(
+        `https://graph.facebook.com/v19.0/${phoneId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: phone,
+            type: "document",
+            document: {
+              id: mediaData.id,
+              filename: `orcamento-${order.id}.pdf`,
+            },
+          }),
+        }
+      );
+
+      const sendData = await sendResponse.json();
+      if (!sendResponse.ok) {
+        return {
+          success: false,
+          message: sendData?.error?.message ?? "Falha ao enviar documento",
+        };
+      }
+
+      return {
+        success: true,
+        message: "Orçamento enviado no WhatsApp",
+        message_id: sendData?.messages?.[0]?.id ?? null,
+      };
+    } catch (error: any) {
+      console.error("Erro ao exportar orçamento:", error);
+      return {
+        success: false,
+        message: "Erro ao exportar orçamento",
       };
     }
   }

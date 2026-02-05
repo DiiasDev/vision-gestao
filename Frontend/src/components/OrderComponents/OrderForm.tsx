@@ -20,6 +20,8 @@ import { formatCurrencyBR } from "../../utils/formatter";
 
 type OrderFormProps = {
   onBack?: () => void;
+  initialData?: import("../../services/Order.services").Order | null;
+  onSaved?: () => void;
 };
 
 type SelectOption = {
@@ -87,7 +89,7 @@ const resolveSelectLabel = (
   return match?.label ?? placeholder;
 };
 
-export default function OrderForm({ onBack }: OrderFormProps) {
+export default function OrderForm({ onBack, initialData, onSaved }: OrderFormProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -144,6 +146,50 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     const timer = setTimeout(() => setAlert(null), 5000);
     return () => clearTimeout(timer);
   }, [alert]);
+
+  useEffect(() => {
+    if (!initialData) return;
+    setSelectedClientKey(initialData.cliente_id ?? initialData.cliente_nome ?? undefined);
+    setContact(initialData.contato ?? "");
+    setEquipment(initialData.equipamento ?? "");
+    setProblem(initialData.problema ?? "");
+    setValidity(initialData.validade ? new Date(initialData.validade) : null);
+    setStatus(initialData.status ?? "em_analise");
+    setNotes(initialData.observacoes ?? "");
+
+    if (initialData.servico_id) {
+      setSelectedServiceKey(String(initialData.servico_id));
+      setManualService("");
+    } else {
+      setSelectedServiceKey(undefined);
+      setManualService(initialData.servico_descricao ?? "");
+    }
+
+    if (initialData.valor_total !== null && initialData.valor_total !== undefined) {
+      setManualEstimate(String(initialData.valor_total));
+      setIsEstimateLocked(false);
+    }
+
+    if (initialData.items?.length) {
+      setItems(
+        initialData.items.map((item) => ({
+          key: item.id ?? `${item.produto_id ?? Math.random()}`,
+          productId:
+            item.produto_id !== undefined && item.produto_id !== null
+              ? String(item.produto_id)
+              : undefined,
+          quantity:
+            item.quantidade !== null && item.quantidade !== undefined
+              ? String(item.quantidade)
+              : "1",
+          price:
+            item.preco_unitario !== null && item.preco_unitario !== undefined
+              ? String(item.preco_unitario)
+              : "",
+        }))
+      );
+    }
+  }, [initialData]);
 
   const clientsByKey = useMemo(() => {
     return new Map(
@@ -246,6 +292,13 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   };
 
   const hasServiceSelection = !!selectedServiceKey;
+  const selectedServiceLabel = selectedServiceKey
+    ? resolveSelectLabel(
+        selectedServiceKey,
+        serviceOptions,
+        ""
+      )
+    : "";
   const showManualServiceField = !hasServiceSelection;
   const hasServiceOptions = serviceOptions.length > 0;
 
@@ -286,14 +339,18 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       const estimatedValue =
         manualEstimate.trim() !== "" ? parsedEstimate : estimatedTotal;
 
-      const result = await OrderService.createOrder({
+      const serviceDescription = hasServiceSelection
+        ? selectedService?.nome_servico ?? selectedServiceLabel ?? null
+        : manualService || null;
+
+      const payload = {
         client_id: selectedClient?.id ?? selectedClientKey ?? null,
         client_name: selectedClient?.nome_completo ?? null,
         client_contact: contact || null,
         equipment: equipment || null,
         problem: problem || null,
         service_id: selectedService?.id ?? null,
-        service_description: hasServiceSelection ? null : manualService || null,
+        service_description: serviceDescription,
         service_value: servicePrice,
         items: items.map((item) => ({
           product_id: item.productId ?? null,
@@ -314,7 +371,11 @@ export default function OrderForm({ onBack }: OrderFormProps) {
           : null,
         status: status || null,
         notes: notes || null,
-      });
+      };
+
+      const result = initialData?.id
+        ? await OrderService.updateOrder(initialData.id, payload)
+        : await OrderService.createOrder(payload);
 
       if (result?.success) {
         setAlert({
@@ -322,6 +383,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
           title: "Orçamento salvo",
           message: "O orçamento foi registrado com sucesso.",
         });
+        onSaved?.();
       } else {
         setAlert({
           type: "error",

@@ -239,15 +239,31 @@ export default function ListServices() {
           />
         </View>
 
-        <Text className="text-sm uppercase tracking-widest text-text-secondary">
-          Serviços & atendimentos
-        </Text>
-        <Text className="mt-2 text-3xl font-semibold text-text-primary">
-          Serviços cadastrados
-        </Text>
-        <Text className="mt-2 text-sm text-text-secondary">
-          Separe o catálogo de serviços do histórico de atendimentos realizados.
-        </Text>
+        {activeSection === "servicos" ? (
+          <>
+            <Text className="text-sm uppercase tracking-widest text-text-secondary">
+              Serviços & atendimentos
+            </Text>
+            <Text className="mt-2 text-3xl font-semibold text-text-primary">
+              Serviços cadastrados
+            </Text>
+            <Text className="mt-2 text-sm text-text-secondary">
+              Separe o catálogo de serviços do histórico de atendimentos realizados.
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text className="text-sm uppercase tracking-widest text-text-secondary">
+              Orçamentos
+            </Text>
+            <Text className="mt-2 text-3xl font-semibold text-text-primary">
+              Orçamentos registrados
+            </Text>
+            <Text className="mt-2 text-sm text-text-secondary">
+              Acompanhe propostas e transforme em ordem de serviço.
+            </Text>
+          </>
+        )}
 
         <View className="mt-4 flex-row gap-2">
           {[
@@ -279,54 +295,58 @@ export default function ListServices() {
           })}
         </View>
 
-        <View className="mt-6 flex-row gap-3">
-          <View className="flex-1 rounded-2xl border border-divider bg-card-background px-4 py-3">
-            <Text className="text-xs text-text-secondary">
-              Serviços no catálogo
-            </Text>
-            <Text className="mt-1 text-lg font-semibold text-text-primary">
-              {activeCatalog}
-            </Text>
-            <Text className="mt-1 text-[11px] text-text-tertiary">
-              de {totalCatalog} cadastrados
-            </Text>
+        {activeSection === "servicos" ? (
+          <View className="mt-6 flex-row gap-3">
+            <View className="flex-1 rounded-2xl border border-divider bg-card-background px-4 py-3">
+              <Text className="text-xs text-text-secondary">
+                Serviços no catálogo
+              </Text>
+              <Text className="mt-1 text-lg font-semibold text-text-primary">
+                {activeCatalog}
+              </Text>
+              <Text className="mt-1 text-[11px] text-text-tertiary">
+                de {totalCatalog} cadastrados
+              </Text>
+            </View>
+            <View className="flex-1 rounded-2xl border border-divider bg-card-background px-4 py-3">
+              <Text className="text-xs text-text-secondary">
+                Serviços realizados
+              </Text>
+              <Text className="mt-1 text-lg font-semibold text-text-primary">
+                {servicesRealized.length}
+              </Text>
+              <Text className="mt-1 text-[11px] text-text-tertiary">
+                últimos 30 dias
+              </Text>
+            </View>
           </View>
-          <View className="flex-1 rounded-2xl border border-divider bg-card-background px-4 py-3">
-            <Text className="text-xs text-text-secondary">
-              Serviços realizados
-            </Text>
-            <Text className="mt-1 text-lg font-semibold text-text-primary">
-              {servicesRealized.length}
-            </Text>
-            <Text className="mt-1 text-[11px] text-text-tertiary">
-              últimos 30 dias
-            </Text>
-          </View>
-        </View>
+        ) : null}
 
-        <View className="mt-5 flex-row items-center gap-3">
-          <View className="flex-1 flex-row items-center gap-2 rounded-2xl border border-divider bg-card-background px-4 py-3">
-            <Ionicons name="search" size={18} color="#9CA3AF" />
-            <TextInput
-              placeholder="Buscar serviço por nome ou categoria"
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 text-sm text-text-primary"
-              value={search}
-              onChangeText={setSearch}
-            />
-            {search ? (
-              <Pressable onPress={() => setSearch("")} hitSlop={8}>
-                <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-              </Pressable>
-            ) : null}
+        {activeSection === "servicos" ? (
+          <View className="mt-5 flex-row items-center gap-3">
+            <View className="flex-1 flex-row items-center gap-2 rounded-2xl border border-divider bg-card-background px-4 py-3">
+              <Ionicons name="search" size={18} color="#9CA3AF" />
+              <TextInput
+                placeholder="Buscar serviço por nome ou categoria"
+                placeholderTextColor="#9CA3AF"
+                className="flex-1 text-sm text-text-primary"
+                value={search}
+                onChangeText={setSearch}
+              />
+              {search ? (
+                <Pressable onPress={() => setSearch("")} hitSlop={8}>
+                  <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                </Pressable>
+              ) : null}
+            </View>
+            <Pressable
+              onPress={() => setIsServiceFormOpen(true)}
+              className="h-12 w-12 items-center justify-center rounded-2xl bg-button-primary"
+            >
+              <Ionicons name="add" size={20} color="#fff" />
+            </Pressable>
           </View>
-          <Pressable
-            onPress={() => setIsServiceFormOpen(true)}
-            className="h-12 w-12 items-center justify-center rounded-2xl bg-button-primary"
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-          </Pressable>
-        </View>
+        ) : null}
       </View>
 
       {activeSection === "orcamentos" ? (
