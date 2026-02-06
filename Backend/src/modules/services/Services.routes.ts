@@ -12,5 +12,6 @@ router.post("/services/realized", controller.createServiceRealized.bind(controll
 router.get("/services/realized", controller.getServicesRealized.bind(controller));
 router.put("/services/realized/:id", controller.updateServiceRealized.bind(controller));
 router.delete("/services/realized/:id", controller.deleteServiceRealized.bind(controller));
+router.post("/services/realized/:id/settle", controller.settleServiceRealized.bind(controller));
 
 export const servicesRoutes = router

@@ -373,6 +373,57 @@ export class ServicesService {
     }
   }
 
+  static async settleServiceRealized(
+    id: string,
+    payload?: {
+      channel?: string | null;
+      date?: string | null;
+      notes?: string | null;
+    }
+  ) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/services/realized/${id}/settle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          channel: payload?.channel ?? null,
+          date: payload?.date ?? null,
+          notes: payload?.notes ?? null,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao faturar serviço realizado",
+        };
+      }
+
+      return data ?? { success: true };
+    } catch (error: any) {
+      console.error("Erro ao faturar serviço realizado: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
   static async createService(payload: ServicePayload) {
     try {
       const controller = new AbortController();

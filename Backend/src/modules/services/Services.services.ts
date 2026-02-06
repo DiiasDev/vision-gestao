@@ -31,9 +31,25 @@ const normalizeNumber = (value: unknown) => {
   }
   const raw = String(value).trim();
   if (!raw) return 0;
-  const normalized = raw.replace(/\./g, "").replace(",", ".");
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : raw;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeDbNumber = (value: unknown) => {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : raw;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const normalizeBoolean = (value: unknown) => {
@@ -543,6 +559,118 @@ export class ServicesService {
         success: false,
         message: "Erro ao listar serviços realizados",
         services_realized: [],
+      };
+    }
+  }
+
+  public async settleServiceRealized(
+    id: string,
+    payload?: {
+      channel?: string | null;
+      date?: string | null;
+      notes?: string | null;
+    }
+  ) {
+    const pool = DB.connect();
+    try {
+      if (!id) {
+        return {
+          success: false,
+          message: "Id do serviço realizado é obrigatório",
+        };
+      }
+
+      await pool.query("BEGIN");
+
+      const serviceResult = await pool.query(
+        "SELECT * FROM servicos_realizados WHERE id = $1 FOR UPDATE",
+        [id]
+      );
+      const service = serviceResult.rows[0];
+
+      if (!service) {
+        await pool.query("ROLLBACK");
+        return {
+          success: false,
+          message: "Serviço realizado não encontrado",
+        };
+      }
+
+      const alreadyBilled = await pool.query(
+        "SELECT id FROM finance_movements WHERE service_realized_id = $1 LIMIT 1",
+        [id]
+      );
+
+      const totalValue =
+        normalizeDbNumber(service.valor_total) ??
+        (normalizeDbNumber(service.valor_servico) ?? 0) +
+          (normalizeDbNumber(service.valor_produtos) ?? 0);
+
+      const movementDate = normalizeText(payload?.date) ?? new Date().toISOString();
+
+      let createdMovement = null;
+
+      if (!alreadyBilled.rows.length) {
+        const insertMovement = `
+          INSERT INTO finance_movements (
+            title,
+            category,
+            movement_date,
+            value,
+            status,
+            type,
+            channel,
+            notes,
+            service_realized_id
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          RETURNING *;
+        `;
+
+        const title =
+          normalizeText(service.descricao) ??
+          normalizeText(service.servico_nome) ??
+          "Serviço realizado";
+
+        const movementResult = await pool.query(insertMovement, [
+          `Faturamento - ${title}`,
+          "Serviço técnico",
+          movementDate,
+          totalValue ?? 0,
+          "Pago",
+          "in",
+          normalizeText(payload?.channel),
+          normalizeText(payload?.notes),
+          id,
+        ]);
+
+        createdMovement = movementResult.rows[0] ?? null;
+      }
+
+      const updatedServiceResult = await pool.query(
+        `UPDATE servicos_realizados
+         SET status = $1, atualizado_em = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        ["concluido", id]
+      );
+
+      await pool.query("COMMIT");
+
+      return {
+        success: true,
+        message: alreadyBilled.rows.length
+          ? "Serviço já estava faturado. Status atualizado."
+          : "Serviço faturado com sucesso",
+        service_realized: updatedServiceResult.rows[0] ?? service,
+        movement: createdMovement,
+        already_billed: alreadyBilled.rows.length > 0,
+      };
+    } catch (error: any) {
+      await pool.query("ROLLBACK");
+      console.error("Erro ao faturar serviço realizado:", error);
+      return {
+        success: false,
+        message: "Erro ao faturar serviço realizado",
       };
     }
   }

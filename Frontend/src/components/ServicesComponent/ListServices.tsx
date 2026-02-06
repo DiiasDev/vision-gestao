@@ -100,6 +100,7 @@ export default function ListServices() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [settling, setSettling] = useState(false);
   const [activeSection, setActiveSection] = useState<"servicos" | "orcamentos">(
     "servicos"
   );
@@ -107,36 +108,45 @@ export default function ListServices() {
   const loadServices = useCallback(async (silent?: boolean) => {
     if (!silent) setLoading(true);
     setError(null);
-    const [catalogResult, realizedResult, clientsResult, productsResult] = await Promise.all([
-      ServicesService.getServices(),
-      ServicesService.getServicesRealized(),
-      ClienteService.getClients(),
-      ProductsService.getProducts(),
-    ]);
+    try {
+      const [catalogResult, realizedResult, clientsResult, productsResult] =
+        await Promise.all([
+          ServicesService.getServices(),
+          ServicesService.getServicesRealized(),
+          ClienteService.getClients(),
+          ProductsService.getProducts(),
+        ]);
 
-    if (catalogResult?.success) {
-      setServices(catalogResult.services ?? []);
-    } else {
+      if (catalogResult?.success) {
+        setServices(catalogResult.services ?? []);
+      } else {
+        setServices([]);
+        setError(catalogResult?.message ?? "Falha ao carregar serviços.");
+      }
+
+      if (realizedResult?.success) {
+        setServicesRealized(realizedResult.services_realized ?? []);
+      } else {
+        setServicesRealized([]);
+        setError(
+          realizedResult?.message ??
+            "Falha ao carregar serviços realizados."
+        );
+      }
+      if (clientsResult?.success) {
+        setClients(clientsResult.clients ?? []);
+      }
+      if (productsResult?.success) {
+        setProducts(productsResult.products ?? []);
+      }
+    } catch (error: any) {
+      console.error("Erro ao carregar serviços:", error);
       setServices([]);
-      setError(catalogResult?.message ?? "Falha ao carregar serviços.");
-    }
-
-    if (realizedResult?.success) {
-      setServicesRealized(realizedResult.services_realized ?? []);
-    } else {
       setServicesRealized([]);
-      setError(
-        realizedResult?.message ??
-          "Falha ao carregar serviços realizados."
-      );
+      setError("Erro ao carregar serviços. Verifique a conexão.");
+    } finally {
+      if (!silent) setLoading(false);
     }
-    if (clientsResult?.success) {
-      setClients(clientsResult.clients ?? []);
-    }
-    if (productsResult?.success) {
-      setProducts(productsResult.products ?? []);
-    }
-    if (!silent) setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -154,6 +164,42 @@ export default function ListServices() {
     await loadServices(true);
     setRefreshing(false);
   };
+
+  const handleSettleService = useCallback(
+    async (service: ServiceRealized) => {
+      if (!service?.id || settling) return;
+
+      setSettling(true);
+      const result = await ServicesService.settleServiceRealized(service.id);
+      setSettling(false);
+
+      if (result?.success) {
+        setActionAlert({
+          type: "success",
+          message:
+            result?.message ?? "Serviço faturado e concluído com sucesso.",
+        });
+
+        const updated =
+          (result?.service_realized as ServiceRealized | undefined) ?? null;
+        if (updated && selectedRealized?.id === updated.id) {
+          setSelectedRealized({
+            ...selectedRealized,
+            ...updated,
+            items: updated.items ?? selectedRealized.items,
+          });
+        }
+
+        loadServices(true);
+      } else {
+        setActionAlert({
+          type: "error",
+          message: result?.message ?? "Não foi possível faturar o serviço.",
+        });
+      }
+    },
+    [settling, selectedRealized, loadServices]
+  );
 
   const filteredServices = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -846,6 +892,44 @@ export default function ListServices() {
               showsVerticalScrollIndicator={false}
             >
               <View className="mb-4 flex-row gap-3">
+                <Pressable
+                  onPress={() => {
+                    if (settling || selectedRealized.status === "concluido") {
+                      return;
+                    }
+                    Alert.alert(
+                      "Dar baixa",
+                      "Confirmar faturamento e concluir o serviço?",
+                      [
+                        { text: "Cancelar", style: "cancel" },
+                        {
+                          text: "Confirmar",
+                          onPress: () => handleSettleService(selectedRealized),
+                        },
+                      ]
+                    );
+                  }}
+                  className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl border px-4 py-3 ${
+                    settling || selectedRealized.status === "concluido"
+                      ? "border-divider bg-background-secondary opacity-60"
+                      : "border-emerald-200 bg-emerald-50"
+                  }`}
+                >
+                  <Ionicons
+                    name="checkmark-done-outline"
+                    size={16}
+                    color={
+                      settling || selectedRealized.status === "concluido"
+                        ? "#6B7280"
+                        : "#059669"
+                    }
+                  />
+                  <Text className="text-sm font-semibold text-text-primary">
+                    {selectedRealized.status === "concluido"
+                      ? "Faturado"
+                      : "Dar baixa"}
+                  </Text>
+                </Pressable>
                 <Pressable
                   onPress={() => {
                     setEditingRealized(selectedRealized);

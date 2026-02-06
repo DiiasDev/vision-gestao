@@ -142,4 +142,32 @@ export class ServicesController {
       });
     }
   }
+
+  async settleServiceRealized(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      if (typeof id !== "string" || !id.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Id do serviço realizado é obrigatório e deve ser uma string válida",
+        });
+      }
+
+      const payload = req.body ?? {};
+      const result = await this.service.settleServiceRealized(id, payload);
+      const statusCode = result.success
+        ? 200
+        : result.message === "Serviço realizado não encontrado"
+          ? 404
+          : 400;
+
+      return res.status(statusCode).json(result);
+    } catch (error: any) {
+      console.error("erro ao faturar serviço realizado", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao faturar serviço realizado",
+      });
+    }
+  }
 }

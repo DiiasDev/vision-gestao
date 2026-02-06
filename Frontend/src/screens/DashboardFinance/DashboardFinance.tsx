@@ -12,6 +12,7 @@ import ListServices from "../../components/ServicesComponent/ListServices";
 import ServicesRealizedForm from "../../components/ServicesComponent/ServicesRealizedForm";
 import OrderForm from "../../components/OrderComponents/OrderForm";
 import FinanceMovimentForm from "../../components/FinanceComponents/FinanceMovimentForm";
+import ListFinance from "../../components/FinanceComponents/ListFinance";
 import ClientForm from "../../components/ClientsComponent/ClientForm";
 import ClientScreen from "../ClientScreen/ClientScreen";
 
@@ -51,16 +52,7 @@ export default function DashboardFinance({
       case "services":
         return <ListServices />;
       case "finance":
-        return (
-          <View className="flex-1 bg-background-primary px-6 pt-10">
-            <Text className="text-2xl font-semibold text-text-primary">
-              Financeiro
-            </Text>
-            <Text className="mt-2 text-base text-text-secondary">
-              Entradas, saídas, contas e relatórios.
-            </Text>
-          </View>
-        );
+        return <ListFinance />;
       default:
         return <HomeComponent userName={userName} />;
     }
