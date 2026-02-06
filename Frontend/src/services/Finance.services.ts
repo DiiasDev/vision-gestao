@@ -23,7 +23,7 @@ const buildRangeStart = (range: FinanceFilter["range"]) => {
   return base;
 };
 
-const formatDateLabel = (date: Date) => {
+const formatDateLabel = (date: Date, timeSource?: Date) => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -31,7 +31,7 @@ const formatDateLabel = (date: Date) => {
     (today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const timeLabel = date.toLocaleTimeString("pt-BR", {
+  const timeLabel = (timeSource ?? date).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -48,8 +48,14 @@ const formatDateLabel = (date: Date) => {
 };
 
 const toMovementView = (movement: FinanceMovement): FinanceMovementView => {
-  const dateISO = movement.date ?? new Date().toISOString();
+  const createdAt = (movement as any).created_at as string | undefined;
+  const dateISO = movement.date ?? createdAt ?? new Date().toISOString();
   const dateObj = new Date(dateISO);
+  const isMidnight =
+    dateObj.getHours() === 0 &&
+    dateObj.getMinutes() === 0 &&
+    dateObj.getSeconds() === 0;
+  const timeSource = isMidnight && createdAt ? new Date(createdAt) : undefined;
   const rawValue = (movement as any).value;
   const value =
     typeof rawValue === "number"
@@ -59,12 +65,87 @@ const toMovementView = (movement: FinanceMovement): FinanceMovementView => {
     ...movement,
     value: Number.isFinite(value) ? value : 0,
     dateISO,
-    dateLabel: formatDateLabel(dateObj),
+    dateLabel: formatDateLabel(dateObj, timeSource),
     channel: movement.channel ?? "PIX",
   };
 };
 
 export class FinanceService {
+  static normalizeDateInput(value?: string | Date | null) {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value.toISOString();
+    }
+    const trimmed = String(value).trim();
+    if (!trimmed) return null;
+    const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (brMatch) {
+      const parsed = new Date(
+        Number(brMatch[3]),
+        Number(brMatch[2]) - 1,
+        Number(brMatch[1])
+      );
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    }
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  static async createMovement(payload: Partial<FinanceMovement>) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/finance/movements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          title: payload.title ?? "",
+          type: payload.type ?? "",
+          category: payload.category ?? null,
+          value: payload.value ?? null,
+          date: FinanceService.normalizeDateInput(payload.date),
+          status: payload.status ?? null,
+          channel: payload.channel ?? null,
+          notes: payload.notes ?? null,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao registrar movimentação",
+          movement: null,
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message ?? "Movimentação registrada",
+        movement: data?.movement ?? null,
+      };
+    } catch (error: any) {
+      console.error("Erro ao registrar movimentação:", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        movement: null,
+      };
+    }
+  }
+
   static async getMovements() {
     try {
       const controller = new AbortController();

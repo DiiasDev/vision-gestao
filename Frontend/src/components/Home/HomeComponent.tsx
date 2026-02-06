@@ -1,16 +1,23 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
 import {
   BarChart,
   LineChart,
   PieChart,
 } from "react-native-chart-kit";
+import { useTheme } from "../../contexts/ThemeContext";
+import {
+  FinanceMovementView,
+  FinanceService,
+} from "../../services/Finance.services";
+import { formatCurrencyBR } from "../../utils/formatter";
 
 type HomeComponentProps = {
   userName?: string;
 };
 
 export default function HomeComponent({ userName }: HomeComponentProps) {
+  const { theme } = useTheme();
   const screenWidth = Dimensions.get("window").width;
   const chartWidth = screenWidth - 48;
   const barLabels = ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago"];
@@ -36,20 +43,87 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
     title: string;
     value: string;
   } | null>(null);
+  const [movements, setMovements] = useState<FinanceMovementView[]>([]);
+  const [loadingMovements, setLoadingMovements] = useState(true);
+  const [movementError, setMovementError] = useState<string | null>(null);
 
-  const chartConfig = {
-    backgroundGradientFrom: "#FFFFFF",
-    backgroundGradientTo: "#FFFFFF",
-    color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-    strokeWidth: 2,
-    barPercentage: 0.6,
-    propsForDots: {
-      r: "4",
-      strokeWidth: "2",
-      stroke: "#2563EB",
-    },
-  };
+  const themeTokens = useMemo(() => {
+    if (theme === "dark") {
+      return {
+        card: "#1F2937",
+        text: "#E5E7EB",
+        textMuted: "#94A3B8",
+        grid: "#334155",
+        accent: "#60A5FA",
+      };
+    }
+    return {
+      card: "#FFFFFF",
+      text: "#111827",
+      textMuted: "#6B7280",
+      grid: "#E5E7EB",
+      accent: "#2563EB",
+    };
+  }, [theme]);
+
+  const chartConfig = useMemo(
+    () => ({
+      backgroundGradientFrom: themeTokens.card,
+      backgroundGradientTo: themeTokens.card,
+      backgroundGradientFromOpacity: 1,
+      backgroundGradientToOpacity: 1,
+      color: (opacity = 1) =>
+        theme === "dark"
+          ? `rgba(96, 165, 250, ${opacity})`
+          : `rgba(37, 99, 235, ${opacity})`,
+      labelColor: (opacity = 1) =>
+        theme === "dark"
+          ? `rgba(148, 163, 184, ${opacity})`
+          : `rgba(107, 114, 128, ${opacity})`,
+      strokeWidth: 2,
+      barPercentage: 0.6,
+      propsForDots: {
+        r: "4",
+        strokeWidth: "2",
+        stroke: themeTokens.accent,
+      },
+      propsForBackgroundLines: {
+        stroke: themeTokens.grid,
+      },
+    }),
+    [theme, themeTokens]
+  );
+
+  useEffect(() => {
+    let active = true;
+    const loadMovements = async () => {
+      setLoadingMovements(true);
+      setMovementError(null);
+      const result = await FinanceService.getMovements();
+      if (!active) return;
+      if (result?.success) {
+        setMovements(FinanceService.toView(result.movements ?? []));
+      } else {
+        setMovements([]);
+        setMovementError(
+          result?.message ?? "Falha ao carregar movimentações."
+        );
+      }
+      setLoadingMovements(false);
+    };
+    loadMovements();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const recentMovements = useMemo(() => {
+    const ordered = [...movements].sort(
+      (a, b) =>
+        new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime()
+    );
+    return ordered.slice(0, 3);
+  }, [movements]);
 
   return (
     <ScrollView
@@ -115,19 +189,26 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           <View className="mt-4 items-center relative">
             {barTooltip ? (
               <View
-                className="absolute z-10 rounded-xl bg-text-primary px-3 py-2"
+                className="absolute z-10 rounded-xl px-3 py-2"
                 style={{
                   left: Math.max(
                     12,
                     Math.min(barTooltip.x - 40, chartWidth - 110),
                   ),
                   top: Math.max(8, barTooltip.y - 48),
+                  backgroundColor: theme === "dark" ? "#111827" : "#111827",
                 }}
               >
-                <Text className="text-[11px] text-white/80">
+                <Text
+                  className="text-[11px]"
+                  style={{ color: theme === "dark" ? "#CBD5F1" : "#E5E7EB" }}
+                >
                   {barTooltip.title}
                 </Text>
-                <Text className="text-sm font-semibold text-white">
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: "#FFFFFF" }}
+                >
                   {barTooltip.value}
                 </Text>
               </View>
@@ -239,28 +320,28 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
                   name: "Tela",
                   population: 38,
                   color: "#2563EB",
-                  legendFontColor: "#6B7280",
+                  legendFontColor: themeTokens.textMuted,
                   legendFontSize: 12,
                 },
                 {
                   name: "Bateria",
                   population: 22,
                   color: "#16A34A",
-                  legendFontColor: "#6B7280",
+                  legendFontColor: themeTokens.textMuted,
                   legendFontSize: 12,
                 },
                 {
                   name: "Conector",
                   population: 18,
                   color: "#F59E0B",
-                  legendFontColor: "#6B7280",
+                  legendFontColor: themeTokens.textMuted,
                   legendFontSize: 12,
                 },
                 {
                   name: "Acessórios",
                   population: 22,
                   color: "#0EA5E9",
-                  legendFontColor: "#6B7280",
+                  legendFontColor: themeTokens.textMuted,
                   legendFontSize: 12,
                 },
               ]}
@@ -438,19 +519,26 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           <View className="mt-4 items-center relative">
             {lineTooltip ? (
               <View
-                className="absolute z-10 rounded-xl bg-text-primary px-3 py-2"
+                className="absolute z-10 rounded-xl px-3 py-2"
                 style={{
                   left: Math.max(
                     12,
                     Math.min(lineTooltip.x - 40, chartWidth - 110),
                   ),
                   top: Math.max(8, lineTooltip.y - 48),
+                  backgroundColor: theme === "dark" ? "#111827" : "#111827",
                 }}
               >
-                <Text className="text-[11px] text-white/80">
+                <Text
+                  className="text-[11px]"
+                  style={{ color: theme === "dark" ? "#CBD5F1" : "#E5E7EB" }}
+                >
                   {lineTooltip.title}
                 </Text>
-                <Text className="text-sm font-semibold text-white">
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: "#FFFFFF" }}
+                >
                   {lineTooltip.value}
                 </Text>
               </View>
@@ -490,39 +578,60 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
             <Text className="text-xs text-text-tertiary">Hoje</Text>
           </View>
           <View className="mt-4 gap-3">
-            <View className="flex-row items-center justify-between rounded-2xl bg-background-secondary px-4 py-3">
-              <View>
+            {loadingMovements ? (
+              <View className="rounded-2xl bg-background-secondary px-4 py-3">
                 <Text className="text-sm text-text-secondary">
-                  Venda • Película 3D
+                  Carregando movimentações...
                 </Text>
-                <Text className="text-xs text-text-tertiary">09:12</Text>
               </View>
-              <Text className="text-sm font-semibold text-state-success">
-                + R$ 65
-              </Text>
-            </View>
-            <View className="flex-row items-center justify-between rounded-2xl bg-background-secondary px-4 py-3">
-              <View>
+            ) : movementError ? (
+              <View className="rounded-2xl bg-background-secondary px-4 py-3">
+                <Text className="text-sm text-state-error">
+                  {movementError}
+                </Text>
+              </View>
+            ) : recentMovements.length === 0 ? (
+              <View className="rounded-2xl bg-background-secondary px-4 py-3">
                 <Text className="text-sm text-text-secondary">
-                  Serviço • Troca de bateria
+                  Nenhuma movimentação recente.
                 </Text>
-                <Text className="text-xs text-text-tertiary">08:40</Text>
               </View>
-              <Text className="text-sm font-semibold text-text-primary">
-                OS #1294
-              </Text>
-            </View>
-            <View className="flex-row items-center justify-between rounded-2xl bg-background-secondary px-4 py-3">
-              <View>
-                <Text className="text-sm text-text-secondary">
-                  Fornecedor • Capas premium
-                </Text>
-                <Text className="text-xs text-text-tertiary">Ontem</Text>
-              </View>
-              <Text className="text-sm font-semibold text-state-error">
-                - R$ 420
-              </Text>
-            </View>
+            ) : (
+              recentMovements.map((movement) => {
+                const signal = movement.type === "in" ? "+" : "-";
+                const valueLabel = `${signal} ${formatCurrencyBR(movement.value)}`;
+                return (
+                  <View
+                    key={movement.id}
+                    className="flex-row items-center justify-between gap-3 rounded-2xl bg-background-secondary px-4 py-3"
+                  >
+                    <View className="flex-1">
+                      <Text
+                        className="text-sm text-text-secondary"
+                        numberOfLines={2}
+                      >
+                        {movement.title}
+                      </Text>
+                      <Text className="text-xs text-text-tertiary">
+                        {movement.dateLabel}
+                      </Text>
+                    </View>
+                    <Text
+                      className={`text-sm font-semibold ${
+                        movement.type === "in"
+                          ? "text-state-success"
+                          : "text-state-error"
+                      }`}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}
+                    >
+                      {valueLabel}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
           </View>
         </View>
       </View>

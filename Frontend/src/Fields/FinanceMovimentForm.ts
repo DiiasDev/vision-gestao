@@ -44,7 +44,7 @@ export const fieldsFinanceMoviment: Field[] = [
   {
     fieldname: "date",
     label: "Data",
-    fieldtype: "text",
+    fieldtype: "date",
     placeholder: "Ex.: 05/02/2026",
     section: "Dados da movimentação",
   },

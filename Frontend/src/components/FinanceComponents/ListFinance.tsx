@@ -16,49 +16,20 @@ import {
 } from "../../services/Finance.services";
 import FinanceMovimentForm from "./FinanceMovimentForm";
 
-const quickInsights = [
-  {
-    id: "receivables",
-    label: "A receber",
-    value: "R$ 6.350",
-    detail: "12 cobranças pendentes",
-  },
-  {
-    id: "payables",
-    label: "A pagar",
-    value: "R$ 3.960",
-    detail: "5 contas próximas",
-  },
-  {
-    id: "avg",
-    label: "Ticket médio",
-    value: "R$ 380",
-    detail: "Últimos 30 dias",
-  },
-];
-
-const highlightCards = [
-  {
-    id: "goals",
-    title: "Meta de faturamento",
-    value: "76%",
-    subtitle: "R$ 46.980 de R$ 62.000",
-    footer: "Faltam R$ 15.020",
-  },
-  {
-    id: "cashflow",
-    title: "Fluxo previsto (7 dias)",
-    value: "+ R$ 2.410",
-    subtitle: "Entradas R$ 5.200 · Saídas R$ 2.790",
-    footer: "Próxima revisão: 07 Fev",
-  },
-];
-
 const formatCurrency = (value: number) =>
   `R$ ${value.toLocaleString("pt-BR")}`;
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+
+const capitalize = (value: string) =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+
+const startOfDay = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const isSameDay = (a: Date, b: Date) =>
+  startOfDay(a).getTime() === startOfDay(b).getTime();
 
 const buildSummaries = (items: FinanceMovementView[]) => {
   const income = items
@@ -132,29 +103,35 @@ export default function ListFinance() {
   const [activeDateField, setActiveDateField] = useState<"from" | "to">("from");
   const [isQuickFormOpen, setIsQuickFormOpen] = useState(false);
   const [quickFormType, setQuickFormType] = useState<"in" | "out" | null>(null);
+  const [showAllMovements, setShowAllMovements] = useState(false);
+  const [quickFormError, setQuickFormError] = useState<string | null>(null);
   const [rawMovements, setRawMovements] = useState<FinanceMovementView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const loadMovements = async (activeRef?: { current: boolean }) => {
+    setLoading(true);
+    setError(null);
+    const result = await FinanceService.getMovements();
+    if (activeRef && !activeRef.current) return;
+    if (result?.success) {
+      setRawMovements(FinanceService.toView(result.movements ?? []));
+    } else {
+      setRawMovements([]);
+      setError(result?.message ?? "Falha ao carregar movimentações.");
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    let active = true;
+    const activeRef = { current: true };
     const load = async () => {
-      setLoading(true);
-      setError(null);
-      const result = await FinanceService.getMovements();
-      if (!active) return;
-      if (result?.success) {
-        setRawMovements(FinanceService.toView(result.movements ?? []));
-      } else {
-        setRawMovements([]);
-        setError(result?.message ?? "Falha ao carregar movimentações.");
-      }
-      setLoading(false);
+      await loadMovements(activeRef);
     };
 
     load();
     return () => {
-      active = false;
+      activeRef.current = false;
     };
   }, []);
 
@@ -179,10 +156,172 @@ export default function ListFinance() {
     [movements, activeFilters]
   );
 
+  const displayedMovements = useMemo(
+    () => (showAllMovements ? movements : filteredMovements),
+    [showAllMovements, movements, filteredMovements]
+  );
+
   const summaries = useMemo(
     () => buildSummaries(filteredMovements),
     [filteredMovements]
   );
+  const summaryPeriodLabel = useMemo(
+    () =>
+      capitalize(
+        today.toLocaleDateString("pt-BR", {
+          month: "long",
+          year: "numeric",
+        })
+      ),
+    [today]
+  );
+
+  const quickInsights = useMemo(() => {
+    const pendingIn = filteredMovements.filter(
+      (item) => item.type === "in" && item.status !== "Pago"
+    );
+    const pendingOut = filteredMovements.filter(
+      (item) => item.type === "out" && item.status !== "Pago"
+    );
+    const sumPendingIn = pendingIn.reduce((acc, item) => acc + item.value, 0);
+    const sumPendingOut = pendingOut.reduce((acc, item) => acc + item.value, 0);
+    const avgBase =
+      filteredMovements.length > 0
+        ? filteredMovements.reduce((acc, item) => acc + item.value, 0) /
+          filteredMovements.length
+        : 0;
+
+    return [
+      {
+        id: "receivables",
+        label: "A receber",
+        value: formatCurrency(sumPendingIn),
+        detail: `${pendingIn.length} cobrança${pendingIn.length === 1 ? "" : "s"} pendente${
+          pendingIn.length === 1 ? "" : "s"
+        }`,
+      },
+      {
+        id: "payables",
+        label: "A pagar",
+        value: formatCurrency(sumPendingOut),
+        detail: `${pendingOut.length} conta${pendingOut.length === 1 ? "" : "s"} pendente${
+          pendingOut.length === 1 ? "" : "s"
+        }`,
+      },
+      {
+        id: "avg",
+        label: "Ticket médio",
+        value: formatCurrency(avgBase),
+        detail: `Base ${filteredMovements.length} movimento${
+          filteredMovements.length === 1 ? "" : "s"
+        }`,
+      },
+    ];
+  }, [filteredMovements]);
+
+  const highlightCards = useMemo(() => {
+    const income = filteredMovements
+      .filter((item) => item.type === "in")
+      .reduce((acc, item) => acc + item.value, 0);
+    const expense = filteredMovements
+      .filter((item) => item.type === "out")
+      .reduce((acc, item) => acc + item.value, 0);
+    const total = income + expense;
+    const incomeShare = total > 0 ? (income / total) * 100 : 0;
+
+    const sevenDaysCutoff = new Date();
+    sevenDaysCutoff.setDate(sevenDaysCutoff.getDate() - 7);
+    const lastSevenDays = movements.filter(
+      (item) => new Date(item.dateISO) >= sevenDaysCutoff
+    );
+    const sevenIncome = lastSevenDays
+      .filter((item) => item.type === "in")
+      .reduce((acc, item) => acc + item.value, 0);
+    const sevenExpense = lastSevenDays
+      .filter((item) => item.type === "out")
+      .reduce((acc, item) => acc + item.value, 0);
+    const sevenTotal = sevenIncome + sevenExpense;
+    const sevenShare = sevenTotal > 0 ? (sevenIncome / sevenTotal) * 100 : 0;
+    const sevenNet = sevenIncome - sevenExpense;
+
+    return [
+      {
+        id: "period",
+        title: "Faturamento do período",
+        value: formatCurrency(income),
+        subtitle: `Saídas ${formatCurrency(expense)}`,
+        footer: `Saldo ${formatCurrency(income - expense)}`,
+        progress: incomeShare,
+      },
+      {
+        id: "cashflow",
+        title: "Fluxo (últimos 7 dias)",
+        value: `${sevenNet >= 0 ? "+" : "-"} ${formatCurrency(
+          Math.abs(sevenNet)
+        )}`,
+        subtitle: `Entradas ${formatCurrency(sevenIncome)} · Saídas ${formatCurrency(
+          sevenExpense
+        )}`,
+        footer: "Base real dos últimos 7 dias",
+        progress: sevenShare,
+      },
+    ];
+  }, [filteredMovements, movements]);
+
+  const attentionCards = useMemo(() => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const pendingTomorrow = movements.filter((item) => {
+      if (item.status === "Pago") return false;
+      const itemDate = new Date(item.dateISO);
+      return isSameDay(itemDate, tomorrow);
+    });
+
+    const sevenDaysCutoff = new Date();
+    sevenDaysCutoff.setDate(sevenDaysCutoff.getDate() - 7);
+    const lastSevenDays = movements.filter(
+      (item) => new Date(item.dateISO) >= sevenDaysCutoff
+    );
+    const sevenNet = lastSevenDays.reduce(
+      (acc, item) => acc + (item.type === "in" ? item.value : -item.value),
+      0
+    );
+    const projectionLabel =
+      sevenNet >= 0
+        ? "Fluxo positivo nos últimos 7 dias"
+        : "Fluxo negativo nos últimos 7 dias";
+    const projectionDetail = `Saldo semanal de ${formatCurrency(Math.abs(sevenNet))}.`;
+
+    const pendingTitles = pendingTomorrow
+      .slice(0, 3)
+      .map((item) => item.title)
+      .join(", ");
+
+    return [
+      {
+        id: "weekly",
+        title: "Projeção semanal",
+        headline: projectionLabel,
+        detail: projectionDetail,
+      },
+      {
+        id: "alerts",
+        title: "Alertas",
+        headline:
+          pendingTomorrow.length > 0
+            ? `${pendingTomorrow.length} cobrança${
+                pendingTomorrow.length === 1 ? "" : "s"
+              } vence${
+                pendingTomorrow.length === 1 ? "" : "m"
+              } amanhã`
+            : "Nenhuma cobrança vence amanhã",
+        detail:
+          pendingTomorrow.length > 0
+            ? `Movimentações: ${pendingTitles}.`
+            : "Sem pendências imediatas.",
+      },
+    ];
+  }, [movements]);
 
   return (
     <ScrollView
@@ -206,6 +345,7 @@ export default function ListFinance() {
         <View className="mb-6 flex-row gap-3">
           <Pressable
             onPress={() => {
+              setQuickFormError(null);
               setQuickFormType("out");
               setIsQuickFormOpen(true);
             }}
@@ -220,6 +360,7 @@ export default function ListFinance() {
           </Pressable>
           <Pressable
             onPress={() => {
+              setQuickFormError(null);
               setQuickFormType("in");
               setIsQuickFormOpen(true);
             }}
@@ -372,7 +513,9 @@ export default function ListFinance() {
             <Text className="text-base font-semibold text-text-primary">
               Resumo financeiro
             </Text>
-            <Text className="text-xs text-text-tertiary">Fevereiro 2026</Text>
+            <Text className="text-xs text-text-tertiary">
+              {summaryPeriodLabel}
+            </Text>
           </View>
           <View className="mt-4 flex-row flex-wrap gap-3">
             {summaries.map((summary) => (
@@ -435,7 +578,7 @@ export default function ListFinance() {
               <View className="mt-4 h-2 rounded-full bg-divider">
                 <View
                   className="h-2 rounded-full bg-state-info"
-                  style={{ width: index === 0 ? "76%" : "60%" }}
+                  style={{ width: `${Math.min(Math.max(card.progress, 0), 100)}%` }}
                 />
               </View>
               <Text className="mt-3 text-xs text-text-tertiary">
@@ -455,9 +598,14 @@ export default function ListFinance() {
                 Últimas movimentações confirmadas
               </Text>
             </View>
-            <View className="rounded-full bg-background-secondary px-3 py-1">
-              <Text className="text-xs text-text-secondary">Ver tudo</Text>
-            </View>
+            <Pressable
+              onPress={() => setShowAllMovements((prev) => !prev)}
+              className="rounded-full bg-background-secondary px-3 py-1"
+            >
+              <Text className="text-xs text-text-secondary">
+                {showAllMovements ? "Ver filtros" : "Ver tudo"}
+              </Text>
+            </Pressable>
           </View>
           <View className="mt-4 gap-3">
             {loading ? (
@@ -476,7 +624,7 @@ export default function ListFinance() {
                   {error}
                 </Text>
               </View>
-            ) : filteredMovements.length === 0 ? (
+            ) : displayedMovements.length === 0 ? (
               <View className="rounded-2xl border border-divider bg-background-secondary p-4">
                 <Text className="text-sm font-semibold text-text-primary">
                   Nenhuma movimentação encontrada
@@ -486,7 +634,7 @@ export default function ListFinance() {
                 </Text>
               </View>
             ) : (
-              filteredMovements.map((movement) => (
+              displayedMovements.map((movement) => (
                 <View
                   key={movement.id}
                   className="rounded-2xl border border-divider bg-background-secondary p-4"
@@ -543,28 +691,19 @@ export default function ListFinance() {
             Cards de atenção
           </Text>
           <View className="mt-4 gap-3">
-            <View className="rounded-2xl bg-background-secondary p-4">
-              <Text className="text-xs uppercase tracking-widest text-text-secondary">
-                Projeção semanal
-              </Text>
-              <Text className="mt-2 text-lg font-semibold text-text-primary">
-                Fluxo positivo até 12 Fev
-              </Text>
-              <Text className="mt-1 text-[11px] text-text-tertiary">
-                Mantendo o ritmo, o caixa fecha com +R$ 4.800.
-              </Text>
-            </View>
-            <View className="rounded-2xl bg-background-secondary p-4">
-              <Text className="text-xs uppercase tracking-widest text-text-secondary">
-                Alertas
-              </Text>
-              <Text className="mt-2 text-lg font-semibold text-text-primary">
-                2 cobranças vencem amanhã
-              </Text>
-              <Text className="mt-1 text-[11px] text-text-tertiary">
-                Clientes: Marcos Silva, Ana Pereira.
-              </Text>
-            </View>
+            {attentionCards.map((card) => (
+              <View key={card.id} className="rounded-2xl bg-background-secondary p-4">
+                <Text className="text-xs uppercase tracking-widest text-text-secondary">
+                  {card.title}
+                </Text>
+                <Text className="mt-2 text-lg font-semibold text-text-primary">
+                  {card.headline}
+                </Text>
+                <Text className="mt-1 text-[11px] text-text-tertiary">
+                  {card.detail}
+                </Text>
+              </View>
+            ))}
           </View>
         </View>
       </View>
@@ -594,7 +733,32 @@ export default function ListFinance() {
           <FinanceMovimentForm
             onBack={() => setIsQuickFormOpen(false)}
             initialData={quickFormType ? { type: quickFormType } : null}
+            onSubmit={async (data) => {
+              setQuickFormError(null);
+              const payload = {
+                ...data,
+                type: data.type ?? quickFormType ?? undefined,
+              };
+              const result = await FinanceService.createMovement(payload);
+              if (result?.success) {
+                await loadMovements();
+                setIsQuickFormOpen(false);
+                return;
+              }
+              setQuickFormError(
+                result?.message ?? "Não foi possível registrar a movimentação."
+              );
+            }}
           />
+          {quickFormError ? (
+            <View className="px-6 pb-6">
+              <View className="rounded-2xl border border-state-error/20 bg-state-error/10 px-4 py-3">
+                <Text className="text-xs text-state-error">
+                  {quickFormError}
+                </Text>
+              </View>
+            </View>
+          ) : null}
         </View>
       </Modal>
 

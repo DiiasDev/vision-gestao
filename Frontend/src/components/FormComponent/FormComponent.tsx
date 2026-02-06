@@ -12,6 +12,8 @@ import {
   Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { formatDateBR } from "../../utils/formatter";
 
 export type FieldOption = {
   value: string;
@@ -47,6 +49,11 @@ type SelectState = {
   fieldname: string;
   label: string;
   options: FieldOption[];
+};
+
+type DateState = {
+  fieldname: string;
+  label: string;
 };
 
 const parseOptions = (options?: string[] | string): FieldOption[] => {
@@ -100,6 +107,8 @@ export default function FormComponent({
   const [loading, setLoading] = useState(false);
   const [activeSelect, setActiveSelect] = useState<SelectState | null>(null);
   const [activeImageField, setActiveImageField] = useState<string | null>(null);
+  const [activeDateField, setActiveDateField] = useState<DateState | null>(null);
+  const [dateDraft, setDateDraft] = useState<Date>(new Date());
 
   useEffect(() => {
     if (initialData) {
@@ -120,6 +129,33 @@ export default function FormComponent({
     setFormData((prev) => ({ ...prev, [fieldname]: value }));
   };
 
+  const toDate = (value: any) => {
+    if (value instanceof Date) return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (brMatch) {
+        const parsed = new Date(
+          Number(brMatch[3]),
+          Number(brMatch[2]) - 1,
+          Number(brMatch[1])
+        );
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+      const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        const parsed = new Date(
+          Number(isoMatch[1]),
+          Number(isoMatch[2]) - 1,
+          Number(isoMatch[3])
+        );
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+
   const handleSubmit = async () => {
     if (!onSubmit) return;
 
@@ -138,6 +174,33 @@ export default function FormComponent({
         ? rawValue
         : field.defaultValue ?? "";
     const normalizedType = field.fieldtype.toLowerCase();
+
+    if (normalizedType === "date" || normalizedType === "datepicker") {
+      const label = value ? formatDateBR(value) : field.placeholder ?? "Selecione...";
+      return (
+        <Pressable
+          onPress={() => {
+            if (field.disabled) return;
+            setDateDraft(toDate(value));
+            setActiveDateField({
+              fieldname: field.fieldname,
+              label: field.label,
+            });
+          }}
+          className={`rounded-xl border border-divider px-4 py-3 bg-background-secondary ${
+            field.disabled ? "opacity-60" : ""
+          }`}
+        >
+          <Text
+            className={`text-base ${
+              value ? "text-text-primary" : "text-text-tertiary"
+            }`}
+          >
+            {label}
+          </Text>
+        </Pressable>
+      );
+    }
 
     if (normalizedType === "select") {
       const options = parseOptions(field.options);
@@ -387,6 +450,64 @@ export default function FormComponent({
                 </Pressable>
               ))}
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={!!activeDateField}
+        animationType="fade"
+        onRequestClose={() => setActiveDateField(null)}
+      >
+        <Pressable
+          onPress={() => setActiveDateField(null)}
+          className="flex-1 items-center justify-center bg-black/40 px-6"
+        >
+          <Pressable
+            onPress={(event) => event.stopPropagation()}
+            className="w-full rounded-3xl bg-card-background p-5"
+          >
+            <Text className="text-lg font-semibold text-text-primary">
+              {activeDateField?.label ?? "Selecionar data"}
+            </Text>
+            <View className="mt-4">
+              <DateTimePicker
+                value={dateDraft}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                onChange={(event, selected) => {
+                  const chosen = selected ?? dateDraft;
+                  setDateDraft(chosen);
+                  if (Platform.OS === "android") {
+                    if (event.type === "set" && activeDateField) {
+                      handleChange(
+                        activeDateField.fieldname,
+                        formatDateBR(chosen)
+                      );
+                    }
+                    setActiveDateField(null);
+                  }
+                }}
+              />
+            </View>
+            {Platform.OS === "ios" ? (
+              <Pressable
+                onPress={() => {
+                  if (!activeDateField) return;
+                  handleChange(
+                    activeDateField.fieldname,
+                    formatDateBR(dateDraft)
+                  );
+                  setActiveDateField(null);
+                }}
+                className="mt-4 items-center rounded-2xl bg-button-primary px-4 py-3"
+              >
+                <Text className="text-sm font-semibold text-white">
+                  Confirmar
+                </Text>
+              </Pressable>
+            ) : null}
           </Pressable>
         </Pressable>
       </Modal>
