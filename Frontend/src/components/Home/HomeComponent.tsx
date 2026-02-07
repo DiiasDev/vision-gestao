@@ -11,6 +11,7 @@ import {
   FinanceService,
 } from "../../services/Finance.services";
 import { formatCurrencyBR } from "../../utils/formatter";
+import { VendasMensais } from "./Graphics/VendasMensais";
 
 type HomeComponentProps = {
   userName?: string;
@@ -20,19 +21,9 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
   const { theme } = useTheme();
   const screenWidth = Dimensions.get("window").width;
   const chartWidth = screenWidth - 48;
-  const barLabels = ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago"];
-  const barValues = [6.2, 7.1, 6.6, 8.4, 9.2, 7.9];
   const lineLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
   const lineValues = [4.2, 4.8, 5.1, 5.0, 5.6, 6.3, 6.1];
-  const barChartHeight = 220;
   const lineChartHeight = 220;
-  const barMax = Math.max(...barValues);
-  const [barTooltip, setBarTooltip] = useState<{
-    title: string;
-    value: string;
-    x: number;
-    y: number;
-  } | null>(null);
   const [lineTooltip, setLineTooltip] = useState<{
     title: string;
     value: string;
@@ -179,87 +170,7 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </View>
         </View>
 
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Vendas mensais
-            </Text>
-            <Text className="text-xs text-text-tertiary">Produtos + serviços</Text>
-          </View>
-          <View className="mt-4 items-center relative">
-            {barTooltip ? (
-              <View
-                className="absolute z-10 rounded-xl px-3 py-2"
-                style={{
-                  left: Math.max(
-                    12,
-                    Math.min(barTooltip.x - 40, chartWidth - 110),
-                  ),
-                  top: Math.max(8, barTooltip.y - 48),
-                  backgroundColor: theme === "dark" ? "#111827" : "#111827",
-                }}
-              >
-                <Text
-                  className="text-[11px]"
-                  style={{ color: theme === "dark" ? "#CBD5F1" : "#E5E7EB" }}
-                >
-                  {barTooltip.title}
-                </Text>
-                <Text
-                  className="text-sm font-semibold"
-                  style={{ color: "#FFFFFF" }}
-                >
-                  {barTooltip.value}
-                </Text>
-              </View>
-            ) : null}
-            <BarChart
-              data={{
-                labels: barLabels,
-                datasets: [{ data: barValues }],
-              }}
-              width={chartWidth}
-              height={barChartHeight}
-              fromZero
-              showValuesOnTopOfBars
-              withInnerLines={false}
-              yAxisLabel="R$ "
-              yAxisSuffix=""
-              chartConfig={{
-                ...chartConfig,
-                decimalPlaces: 1,
-              }}
-              style={{ borderRadius: 16 }}
-            />
-            <View
-              className="absolute inset-0 flex-row"
-              style={{ height: barChartHeight }}
-            >
-              {barValues.map((value, index) => {
-                const barWidth = chartWidth / barValues.length;
-                const x = barWidth * index + barWidth / 2;
-                const y =
-                  barChartHeight -
-                  (value / barMax) * (barChartHeight - 24);
-                return (
-                  <Pressable
-                    key={`${value}-${index}`}
-                    className="flex-1"
-                    onPress={() => {
-                      setLineTooltip(null);
-                      setBarTooltip({
-                        title: `Mês ${barLabels[index]}`,
-                        value: `R$ ${(value * 1000).toFixed(0)}`,
-                        x,
-                        y,
-                      });
-                    }}
-                  />
-                );
-              })}
-            </View>
-          </View>
-        </View>
+        <VendasMensais />
 
         <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
           <View className="flex-row items-center justify-between">
@@ -557,7 +468,6 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
               bezier
               withInnerLines={false}
               onDataPointClick={({ value, index, x, y }) => {
-                setBarTooltip(null);
                 setLineTooltip({
                   title: `Dia ${lineLabels[index]}`,
                   value: `R$ ${(value * 1000).toFixed(0)}`,
