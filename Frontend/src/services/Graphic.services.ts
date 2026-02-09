@@ -81,6 +81,24 @@ export type StatusOSResponse = {
   data: StatusOSData;
 };
 
+export type ServicosPorCategoriaItem = {
+  categoria: string;
+  quantidade: number;
+  percentual: number;
+};
+
+export type ServicosPorCategoriaData = {
+  total: number;
+  categorias: ServicosPorCategoriaItem[];
+  dias: number;
+};
+
+export type ServicosPorCategoriaResponse = {
+  success: boolean;
+  message?: string;
+  data: ServicosPorCategoriaData;
+};
+
 export class GraphicService {
   static async getVendasMensais(months = 6) {
     try {
@@ -316,6 +334,57 @@ export class GraphicService {
         message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
         data: { concluidas: 0, emExecucao: 0, agendadas: 0 },
       } as StatusOSResponse;
+    }
+  }
+
+  static async getServicosPorCategoria() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(
+        `${getBaseUrl()}/graphics/servicos-por-categoria`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: ServicosPorCategoriaResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as ServicosPorCategoriaResponse) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar serviços por categoria",
+          data: { total: 0, categorias: [], dias: 30 },
+        } as ServicosPorCategoriaResponse;
+      }
+
+      return (
+        data ?? {
+          success: true,
+          data: { total: 0, categorias: [], dias: 30 },
+        }
+      );
+    } catch (error: any) {
+      const isAbort = error?.name === "AbortError";
+      if (!isAbort) {
+        console.error("Erro ao carregar serviços por categoria:", error);
+      }
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        data: { total: 0, categorias: [], dias: 30 },
+      } as ServicosPorCategoriaResponse;
     }
   }
 }

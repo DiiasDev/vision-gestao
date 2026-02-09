@@ -368,4 +368,89 @@ export class GraphicsServices {
       };
     }
   }
+
+  public async servicosPorCategoria(){
+    try{
+      const servicesRealized =
+        (await this.services.getServicesRealized()).services_realized ?? [];
+      const servicesCatalog = (await this.services.getServices()).servicos ?? [];
+
+      const categoryByServiceId = servicesCatalog.reduce(
+        (acc: Record<string, string>, item: any) => {
+          const id = String(item.id ?? "").trim();
+          if (!id) return acc;
+          const categoria = String(item.categoria ?? "").trim();
+          if (categoria) acc[id] = categoria;
+          return acc;
+        },
+        {},
+      );
+
+      const startDate = moment().subtract(30, "days").startOf("day");
+      const endDate = moment().endOf("day");
+
+      const counts = servicesRealized.reduce(
+        (acc: Record<string, number>, item: any) => {
+          const rawDate = item.data_servico ?? item.criado_em;
+          if (rawDate) {
+            const isInRange = moment(rawDate).isBetween(
+              startDate,
+              endDate,
+              undefined,
+              "[]",
+            );
+            if (!isInRange) return acc;
+          }
+
+          const servicoId = String(item.servico_id ?? "").trim();
+          const categoriaRaw =
+            categoryByServiceId[servicoId] ??
+            item.categoria ??
+            item.servico_categoria ??
+            "";
+          const categoria = String(categoriaRaw || "Sem categoria").trim();
+          acc[categoria] = (acc[categoria] ?? 0) + 1;
+          return acc;
+        },
+        {},
+      );
+
+      const total = Object.values(counts).reduce(
+        (acc, value) => acc + value,
+        0,
+      );
+
+      const categorias = Object.entries(counts)
+        .map(([categoria, quantidade]) => {
+          const percentual = total > 0 ? (quantidade / total) * 100 : 0;
+          return {
+            categoria,
+            quantidade,
+            percentual,
+          };
+        })
+        .sort((a, b) => b.quantidade - a.quantidade);
+
+      return{
+        success: true,
+        message: "Dados trazidos com sucesso para servicos por categoria",
+        data: {
+          total,
+          categorias,
+          dias: 30,
+        }
+      }
+    }catch(error: any){
+      console.error("erro ao trazer dados para servicos por categoria:", error);
+      return {
+        success: false,
+        message: "erro ao trazer dados para servicos por categoria",
+        data: {
+          total: 0,
+          categorias: [],
+          dias: 30,
+        }
+      }
+    }
+  }
 }

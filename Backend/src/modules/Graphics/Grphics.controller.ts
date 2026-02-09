@@ -58,4 +58,17 @@ export class GraphicsController {
       res.status(500).json("");
     }
   }
+
+  public async getServicosPorCategoria(_req: Request, res: Response) {
+    try {
+      const data = await this.GraphicServices.servicosPorCategoria();
+      res.status(200).json(data);
+    } catch (error: any) {
+      console.error("erro ao trazer dados para servicos por categoria:", error);
+      res.status(500).json({
+        success: false,
+        data: { total: 0, categorias: [], dias: 30 },
+      });
+    }
+  }
 }

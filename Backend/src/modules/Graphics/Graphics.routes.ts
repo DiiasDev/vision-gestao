@@ -8,5 +8,9 @@ router.get("/graphics/painel", controller.getVendasMensais.bind(controller));
 router.get("/graphics/cards", controller.getValuesCards.bind(controller));
 router.get("/graphics/custo-x-lucro", controller.getCustoXLucro.bind(controller));
 router.get("/graphics/status-os", controller.getStatusOS.bind(controller));
+router.get(
+  "/graphics/servicos-por-categoria",
+  controller.getServicosPorCategoria.bind(controller),
+);
 
 export const graphicRoutes = router;
