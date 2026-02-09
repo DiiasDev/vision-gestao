@@ -494,10 +494,24 @@ export class ServicesService {
         };
       }
 
+      await pool.query("BEGIN");
+
+      await pool.query(
+        "DELETE FROM servicos_realizados_itens WHERE servico_realizado_id = $1",
+        [id]
+      );
+
+      await pool.query(
+        "DELETE FROM finance_movements WHERE service_realized_id = $1",
+        [id]
+      );
+
       const result = await pool.query(
         "DELETE FROM servicos_realizados WHERE id = $1 RETURNING *",
         [id]
       );
+
+      await pool.query("COMMIT");
 
       return {
         success: true,
@@ -505,6 +519,10 @@ export class ServicesService {
         service_realized: result.rows[0] ?? null,
       };
     } catch (error: any) {
+      try {
+        const pool = DB.connect();
+        await pool.query("ROLLBACK");
+      } catch {}
       console.error("Erro ao excluir serviço realizado:", error);
       return {
         success: false,

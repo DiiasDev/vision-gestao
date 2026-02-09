@@ -185,7 +185,11 @@ export class FinanceService {
       `;
 
       const result = await pool.query(query, values);
-      const movements = (result.rows ?? []).map((row) => {
+      const filteredRows = (result.rows ?? []).filter((row) => {
+        if (!row.service_realized_id) return true;
+        return row.service_total !== null && row.service_total !== undefined;
+      });
+      const movements = filteredRows.map((row) => {
         const rawValue = row.value;
         const value =
           typeof rawValue === "number" ? rawValue : normalizeNumber(rawValue) ?? 0;

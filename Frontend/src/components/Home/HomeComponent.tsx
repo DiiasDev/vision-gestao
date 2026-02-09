@@ -12,6 +12,7 @@ import {
 } from "../../services/Finance.services";
 import { formatCurrencyBR } from "../../utils/formatter";
 import { VendasMensais } from "./Graphics/VendasMensais";
+import { CustoXLucro } from "./Graphics/custoXlucro";
 import { ValuesCards } from "./Cards/ValuesCards";
 
 type HomeComponentProps = {
@@ -140,50 +141,7 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
 
         <VendasMensais />
 
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Custos x lucros por serviço
-            </Text>
-            <Text className="text-xs text-text-tertiary">Últimos 30 dias</Text>
-          </View>
-          <View className="mt-4 items-center">
-            <LineChart
-              data={{
-                labels: ["Tela", "Bateria", "Conector", "Software", "Outros"],
-                datasets: [
-                  { data: [4200, 2100, 1600, 900, 700], color: () => "#DC2626" },
-                  { data: [7200, 4100, 2900, 1800, 1200], color: () => "#16A34A" },
-                ],
-                legend: ["Custos", "Lucros"],
-              }}
-              width={chartWidth}
-              height={240}
-              chartConfig={{
-                ...chartConfig,
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
-              }}
-              withInnerLines={false}
-              bezier
-              style={{ borderRadius: 16 }}
-            />
-          </View>
-          <View className="mt-4 flex-row gap-3">
-            <View className="flex-1 rounded-2xl bg-background-secondary px-4 py-3">
-              <Text className="text-xs text-text-secondary">Margem média</Text>
-              <Text className="mt-1 text-lg font-semibold text-text-primary">
-                46%
-              </Text>
-            </View>
-            <View className="flex-1 rounded-2xl bg-background-secondary px-4 py-3">
-              <Text className="text-xs text-text-secondary">Lucro total</Text>
-              <Text className="mt-1 text-lg font-semibold text-state-success">
-                R$ 9.800
-              </Text>
-            </View>
-          </View>
-        </View>
+        <CustoXLucro />
 
         <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
           <View className="flex-row items-center justify-between">

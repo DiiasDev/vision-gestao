@@ -6,5 +6,6 @@ const controller = new GraphicsController();
 
 router.get("/graphics/painel", controller.getVendasMensais.bind(controller));
 router.get("/graphics/cards", controller.getValuesCards.bind(controller));
+router.get("/graphics/custo-x-lucro", controller.getCustoXLucro.bind(controller));
 
 export const graphicRoutes = router;

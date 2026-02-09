@@ -37,4 +37,15 @@ export class GraphicsController {
       });
     }
   }
+
+  public async getCustoXLucro(_req: Request, res: Response) {
+    try {
+      const data = await this.GraphicServices.custoXlucro();
+
+      return res.status(200).json(data);
+    } catch (error: any) {
+      console.error("erro ao trazer dados para custoXlucro: ", error);
+      return res.status(500).json({ data: {} });
+    }
+  }
 }

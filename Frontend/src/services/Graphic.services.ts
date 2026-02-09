@@ -42,6 +42,33 @@ export type ValuesCardsResponse = {
   data: ValuesCardsData;
 };
 
+export type CustoLucroItem = {
+  servicoId: string;
+  servicoNome: string;
+  totalValor: number;
+  totalVenda?: number;
+  totalCusto: number;
+  quantidade: number;
+  lucroTotal: number;
+  media: number;
+};
+
+export type CustoLucroData = {
+  totalValor: number;
+  totalVenda?: number;
+  totalCusto: number;
+  lucroTotal: number;
+  media: number;
+  qtdServicos: number;
+  servicos: CustoLucroItem[];
+};
+
+export type CustoLucroResponse = {
+  success: boolean;
+  message?: string;
+  data: CustoLucroData;
+};
+
 export class GraphicService {
   static async getVendasMensais(months = 6) {
     try {
@@ -160,6 +187,75 @@ export class GraphicService {
           custoPercent: 0,
         },
       } as ValuesCardsResponse;
+    }
+  }
+
+  static async getCustoXLucro() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(`${getBaseUrl()}/graphics/custo-x-lucro`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: CustoLucroResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as CustoLucroResponse) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar custo x lucro",
+          data: {
+            totalValor: 0,
+            totalCusto: 0,
+            lucroTotal: 0,
+            media: 0,
+            qtdServicos: 0,
+            servicos: [],
+          },
+        } as CustoLucroResponse;
+      }
+
+      return (
+        data ?? {
+          success: true,
+          data: {
+            totalValor: 0,
+            totalCusto: 0,
+            lucroTotal: 0,
+            media: 0,
+            qtdServicos: 0,
+            servicos: [],
+          },
+        }
+      );
+    } catch (error: any) {
+      const isAbort = error?.name === "AbortError";
+      if (!isAbort) {
+        console.error("Erro ao carregar custo x lucro:", error);
+      }
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        data: {
+          totalValor: 0,
+          totalCusto: 0,
+          lucroTotal: 0,
+          media: 0,
+          qtdServicos: 0,
+          servicos: [],
+        },
+      } as CustoLucroResponse;
     }
   }
 }
