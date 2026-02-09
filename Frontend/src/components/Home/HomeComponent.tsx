@@ -13,6 +13,7 @@ import { formatCurrencyBR } from "../../utils/formatter";
 import { VendasMensais } from "./Graphics/VendasMensais";
 import { CustoXLucro } from "./Graphics/custoXvendas";
 import { ValuesCards } from "./Cards/ValuesCards";
+import { StatusOS } from "./Cards/StatusOS";
 import { ServicosPorCategorias } from "./Graphics/servicosPorCategorias";
 import {
   DateFilter,
@@ -175,66 +176,6 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
         <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-semibold text-text-primary">
-              Evolução do caixa
-            </Text>
-            <Text className="text-xs text-text-tertiary">Últimos 7 dias</Text>
-          </View>
-          <View className="mt-4 items-center relative">
-            {lineTooltip ? (
-              <View
-                className="absolute z-10 rounded-xl px-3 py-2"
-                style={{
-                  left: Math.max(
-                    12,
-                    Math.min(lineTooltip.x - 40, chartWidth - 110),
-                  ),
-                  top: Math.max(8, lineTooltip.y - 48),
-                  backgroundColor: theme === "dark" ? "#111827" : "#111827",
-                }}
-              >
-                <Text
-                  className="text-[11px]"
-                  style={{ color: theme === "dark" ? "#CBD5F1" : "#E5E7EB" }}
-                >
-                  {lineTooltip.title}
-                </Text>
-                <Text
-                  className="text-sm font-semibold"
-                  style={{ color: "#FFFFFF" }}
-                >
-                  {lineTooltip.value}
-                </Text>
-              </View>
-            ) : null}
-            <LineChart
-              data={{
-                labels: lineLabels,
-                datasets: [{ data: lineValues }],
-              }}
-              width={chartWidth}
-              height={lineChartHeight}
-              chartConfig={{
-                ...chartConfig,
-                decimalPlaces: 1,
-              }}
-              bezier
-              withInnerLines={false}
-              onDataPointClick={({ value, index, x, y }) => {
-                setLineTooltip({
-                  title: `Dia ${lineLabels[index]}`,
-                  value: `R$ ${(value * 1000).toFixed(0)}`,
-                  x,
-                  y,
-                });
-              }}
-              style={{ borderRadius: 16 }}
-            />
-          </View>
-        </View>
-
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
               Movimentações recentes
             </Text>
             <Text className="text-xs text-text-tertiary">Hoje</Text>
@@ -309,47 +250,7 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           textMuted={themeTokens.textMuted}
         />
 
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Status das ordens de serviço
-            </Text>
-            <Text className="text-xs text-text-tertiary">Hoje</Text>
-          </View>
-          <View className="mt-4 gap-3">
-            <View className="rounded-2xl bg-background-secondary px-4 py-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-sm text-text-secondary">
-                  Aguardando peças
-                </Text>
-                <Text className="text-sm font-semibold text-text-primary">6</Text>
-              </View>
-              <View className="mt-2 h-2 rounded-full bg-divider">
-                <View className="h-2 w-[38%] rounded-full bg-state-warning" />
-              </View>
-            </View>
-            <View className="rounded-2xl bg-background-secondary px-4 py-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-sm text-text-secondary">
-                  Em andamento
-                </Text>
-                <Text className="text-sm font-semibold text-text-primary">11</Text>
-              </View>
-              <View className="mt-2 h-2 rounded-full bg-divider">
-                <View className="h-2 w-[64%] rounded-full bg-state-info" />
-              </View>
-            </View>
-            <View className="rounded-2xl bg-background-secondary px-4 py-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-sm text-text-secondary">Concluídas</Text>
-                <Text className="text-sm font-semibold text-text-primary">18</Text>
-              </View>
-              <View className="mt-2 h-2 rounded-full bg-divider">
-                <View className="h-2 w-[82%] rounded-full bg-state-success" />
-              </View>
-            </View>
-          </View>
-        </View>
+        <StatusOS />
 
         <View className="mt-2 mb-4">
           <Text className="text-xs uppercase tracking-widest text-text-secondary">

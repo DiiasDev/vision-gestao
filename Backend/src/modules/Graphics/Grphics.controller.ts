@@ -48,4 +48,14 @@ export class GraphicsController {
       return res.status(500).json({ data: {} });
     }
   }
+
+  public async getStatusOS(req: Request, res: Response) {
+    try {
+      const data = await this.GraphicServices.statusOS();
+
+      res.status(200).json(data);
+    } catch (error: any) {
+      res.status(500).json("");
+    }
+  }
 }

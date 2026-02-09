@@ -258,7 +258,11 @@ export class GraphicsServices {
         item.lucroTotal,
       ]);
       const maxValue = allValues.length
-        ? Math.max(...allValues.map((value: any) => (Number.isFinite(value) ? value : 0)))
+        ? Math.max(
+            ...allValues.map((value: any) =>
+              Number.isFinite(value) ? value : 0,
+            ),
+          )
         : 0;
       const shouldScaleBy100 =
         allValues.length > 0 &&
@@ -279,8 +283,14 @@ export class GraphicsServices {
         });
       }
 
-      const totalValor = servicos.reduce((acc, s: any) => acc + s.totalValor, 0);
-      const totalCusto = servicos.reduce((acc, s: any) => acc + s.totalCusto, 0);
+      const totalValor = servicos.reduce(
+        (acc, s: any) => acc + s.totalValor,
+        0,
+      );
+      const totalCusto = servicos.reduce(
+        (acc, s: any) => acc + s.totalCusto,
+        0,
+      );
       const lucroTotal = totalValor - totalCusto;
       const qtdServicos = servicos.reduce(
         (acc, s: any) => acc + s.quantidade,
@@ -308,6 +318,48 @@ export class GraphicsServices {
         success: false,
         message: "Erro ao calcular valor para custoXlucro",
         data: { custo: 0, lucro: 0 },
+      };
+    }
+  }
+
+  public async statusOS() {
+    try {
+      const os = (await this.services.getServicesRealized()).services_realized;
+
+      const normalizeStatus = (value: unknown) => {
+        if (value === undefined || value === null) return "";
+        return String(value).trim().toLowerCase();
+      };
+
+      const statusList = os.map((item: any) => normalizeStatus(item.status));
+
+      const concluidas = statusList.filter(
+        (status) => status === "concluido" || status === "concluida",
+      ).length;
+      const emExecucao = statusList.filter(
+        (status) => status === "em execucao",
+      ).length;
+      const agendadas = statusList.filter(
+        (status) => status === "agendado" || status === "agendada",
+      ).length;
+
+      const data = {
+        concluidas: concluidas,
+        emExecucao: emExecucao,
+        agendadas: agendadas,
+      };
+
+      return {
+        success: true,
+        message: `Dados de status de OS: ${data}`,
+        data: data,
+      };
+    } catch (error: any) {
+      console.error("Erro ao trazer status de os: ", error);
+      return {
+        success: false,
+        message: "Erro ao trazer status de os",
+        data: {},
       };
     }
   }

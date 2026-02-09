@@ -69,6 +69,18 @@ export type CustoLucroResponse = {
   data: CustoLucroData;
 };
 
+export type StatusOSData = {
+  concluidas: number;
+  emExecucao: number;
+  agendadas: number;
+};
+
+export type StatusOSResponse = {
+  success: boolean;
+  message?: string;
+  data: StatusOSData;
+};
+
 export class GraphicService {
   static async getVendasMensais(months = 6) {
     try {
@@ -256,6 +268,54 @@ export class GraphicService {
           servicos: [],
         },
       } as CustoLucroResponse;
+    }
+  }
+
+  static async getStatusOS() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(`${getBaseUrl()}/graphics/status-os`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: StatusOSResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as StatusOSResponse) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar status das OS",
+          data: { concluidas: 0, emExecucao: 0, agendadas: 0 },
+        } as StatusOSResponse;
+      }
+
+      return (
+        data ?? {
+          success: true,
+          data: { concluidas: 0, emExecucao: 0, agendadas: 0 },
+        }
+      );
+    } catch (error: any) {
+      const isAbort = error?.name === "AbortError";
+      if (!isAbort) {
+        console.error("Erro ao carregar status das OS:", error);
+      }
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        data: { concluidas: 0, emExecucao: 0, agendadas: 0 },
+      } as StatusOSResponse;
     }
   }
 }
