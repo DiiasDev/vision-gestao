@@ -1,3 +1,4 @@
+import { DB } from "../../../database/conn.js";
 import { ServicesService } from "./../services/Services.services.js";
 import { FinanceService } from "../Finance/Finance.services.js";
 import moment from "moment";
@@ -141,15 +142,6 @@ export class GraphicsServices {
         isInRange(item.date, previousStart, previousEnd),
       );
 
-      const faturamento = currentMovements.filter(
-        (item: any) => item.type === "in",
-      );
-
-      const totalFaturamento = faturamento.reduce((acc: number, item: any) => {
-        const valor = normalizeValue(item.value);
-        return acc + valor;
-      }, 0);
-
       const despesas = currentMovements.filter(
         (item: any) => item.type === "out",
       );
@@ -159,14 +151,46 @@ export class GraphicsServices {
         return acc + valor;
       }, 0);
 
-      const saldo = totalFaturamento - totalDespesas;
+      const serviceCostsResult = await DB.connect().query(
+        `
+          SELECT
+            valor_total,
+            custo_total,
+            data_servico,
+            criado_em
+          FROM servicos_realizados
+        `
+      );
 
-      const previousFaturamento = previousMovements
-        .filter((item: any) => item.type === "in")
-        .reduce(
-          (acc: number, item: any) => acc + normalizeValue(item.value),
-          0,
-        );
+      const serviceCosts = (serviceCostsResult.rows ?? []).filter((row: any) => {
+        const date = row.data_servico ?? row.criado_em;
+        return date ? isInRange(date, currentStart, currentEnd) : false;
+      });
+
+      const totalFaturamento = serviceCosts.reduce((acc: number, row: any) => {
+        const valor = normalizeValue(row.valor_total);
+        return acc + valor;
+      }, 0);
+
+      const totalServiceCosts = serviceCosts.reduce((acc: number, row: any) => {
+        const valor = normalizeValue(row.custo_total);
+        return acc + valor;
+      }, 0);
+
+      const totalCosts = totalServiceCosts;
+      const saldo = totalFaturamento - totalCosts;
+
+      const previousServiceCosts = (serviceCostsResult.rows ?? []).filter(
+        (row: any) => {
+          const date = row.data_servico ?? row.criado_em;
+          return date ? isInRange(date, previousStart, previousEnd) : false;
+        },
+      );
+
+      const previousFaturamento = previousServiceCosts.reduce(
+        (acc: number, row: any) => acc + normalizeValue(row.valor_total),
+        0,
+      );
 
       const faturamentoPercent =
         previousFaturamento > 0
@@ -175,13 +199,13 @@ export class GraphicsServices {
           : null;
 
       const custoPercent =
-        totalFaturamento > 0 ? (totalDespesas / totalFaturamento) * 100 : 0;
+        totalFaturamento > 0 ? (totalCosts / totalFaturamento) * 100 : 0;
 
       return {
         success: true,
         data: {
           faturamento: totalFaturamento,
-          custo: totalDespesas,
+          custo: totalCosts,
           saldo: saldo,
           faturamentoPercent,
           custoPercent,

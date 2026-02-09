@@ -263,6 +263,7 @@ export class ServicesService {
       const costService = normalizeNumber(payload.cost);
       const costProducts = items.reduce((acc, item) => acc + item.total_cost, 0);
       const costTotal = costService + costProducts;
+      const status = normalizeText(payload.status) ?? "concluido";
 
       await pool.query("BEGIN");
 
@@ -299,7 +300,7 @@ export class ServicesService {
         normalizeText(payload.equipment),
         normalizeText(payload.description),
         normalizeText(payload.service_date),
-        normalizeText(payload.status) ?? "concluido",
+        status,
         valueService,
         valueProducts,
         valueTotal,
@@ -338,6 +339,50 @@ export class ServicesService {
             item.total,
             item.cost,
             item.total_cost,
+          ]);
+        }
+      }
+
+      if (status === "concluido") {
+        const alreadyBilled = await pool.query(
+          "SELECT id FROM finance_movements WHERE service_realized_id = $1 LIMIT 1",
+          [realized.id]
+        );
+
+        if (!alreadyBilled.rows.length) {
+          const insertMovement = `
+            INSERT INTO finance_movements (
+              title,
+              category,
+              movement_date,
+              value,
+              status,
+              type,
+              channel,
+              notes,
+              service_realized_id
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            RETURNING *;
+          `;
+
+          const title =
+            normalizeText(realized.descricao) ??
+            normalizeText(realized.servico_nome) ??
+            "Serviço realizado";
+
+          const movementDate =
+            normalizeText(payload.service_date) ?? new Date().toISOString();
+
+          await pool.query(insertMovement, [
+            `Faturamento - ${title}`,
+            "Serviço técnico",
+            movementDate,
+            valueTotal ?? 0,
+            "Pago",
+            "in",
+            null,
+            normalizeText(payload.notes),
+            realized.id,
           ]);
         }
       }
@@ -381,6 +426,7 @@ export class ServicesService {
       const costService = normalizeNumber(payload.cost);
       const costProducts = items.reduce((acc, item) => acc + item.total_cost, 0);
       const costTotal = costService + costProducts;
+      const status = normalizeText(payload.status) ?? "concluido";
 
       await pool.query("BEGIN");
 
@@ -417,7 +463,7 @@ export class ServicesService {
         normalizeText(payload.equipment),
         normalizeText(payload.description),
         normalizeText(payload.service_date),
-        normalizeText(payload.status) ?? "concluido",
+        status,
         valueService,
         valueProducts,
         valueTotal,
@@ -462,6 +508,50 @@ export class ServicesService {
             item.total,
             item.cost,
             item.total_cost,
+          ]);
+        }
+      }
+
+      if (status === "concluido") {
+        const alreadyBilled = await pool.query(
+          "SELECT id FROM finance_movements WHERE service_realized_id = $1 LIMIT 1",
+          [realized.id]
+        );
+
+        if (!alreadyBilled.rows.length) {
+          const insertMovement = `
+            INSERT INTO finance_movements (
+              title,
+              category,
+              movement_date,
+              value,
+              status,
+              type,
+              channel,
+              notes,
+              service_realized_id
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            RETURNING *;
+          `;
+
+          const title =
+            normalizeText(realized.descricao) ??
+            normalizeText(realized.servico_nome) ??
+            "Serviço realizado";
+
+          const movementDate =
+            normalizeText(payload.service_date) ?? new Date().toISOString();
+
+          await pool.query(insertMovement, [
+            `Faturamento - ${title}`,
+            "Serviço técnico",
+            movementDate,
+            valueTotal ?? 0,
+            "Pago",
+            "in",
+            null,
+            normalizeText(payload.notes),
+            realized.id,
           ]);
         }
       }
