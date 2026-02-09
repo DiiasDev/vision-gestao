@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
+import { Dimensions, ScrollView, Text, View } from "react-native";
 import {
   BarChart,
   LineChart,
-  PieChart,
 } from "react-native-chart-kit";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
@@ -14,6 +13,11 @@ import { formatCurrencyBR } from "../../utils/formatter";
 import { VendasMensais } from "./Graphics/VendasMensais";
 import { CustoXLucro } from "./Graphics/custoXvendas";
 import { ValuesCards } from "./Cards/ValuesCards";
+import { ServicosPorCategorias } from "./Graphics/servicosPorCategorias";
+import {
+  DateFilter,
+  DateRangeValue,
+} from "./Filters/DateFilter";
 
 type HomeComponentProps = {
   userName?: string;
@@ -32,13 +36,19 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
     x: number;
     y: number;
   } | null>(null);
-  const [pieTooltip, setPieTooltip] = useState<{
-    title: string;
-    value: string;
-  } | null>(null);
   const [movements, setMovements] = useState<FinanceMovementView[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(true);
   const [movementError, setMovementError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRangeValue>(() => {
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - 1);
+    return {
+      preset: "1m",
+      startDate,
+      endDate,
+    };
+  });
 
   const themeTokens = useMemo(() => {
     if (theme === "dark") {
@@ -110,13 +120,24 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
     };
   }, []);
 
+  const filteredMovements = useMemo(() => {
+    const start = new Date(dateRange.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(dateRange.endDate);
+    end.setHours(23, 59, 59, 999);
+    return movements.filter((movement) => {
+      const movementDate = new Date(movement.dateISO);
+      return movementDate >= start && movementDate <= end;
+    });
+  }, [dateRange.endDate, dateRange.startDate, movements]);
+
   const recentMovements = useMemo(() => {
-    const ordered = [...movements].sort(
+    const ordered = [...filteredMovements].sort(
       (a, b) =>
         new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime()
     );
     return ordered.slice(0, 3);
-  }, [movements]);
+  }, [filteredMovements]);
 
   return (
     <ScrollView
@@ -137,6 +158,14 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </Text>
         </View>
 
+        <DateFilter value={dateRange} onChange={setDateRange} />
+
+        <View className="mt-2 mb-4">
+          <Text className="text-xs uppercase tracking-widest text-text-secondary">
+            Financeiro
+          </Text>
+        </View>
+
         <ValuesCards />
 
         <VendasMensais />
@@ -146,95 +175,139 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
         <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-semibold text-text-primary">
-              Serviços por categoria
+              Evolução do caixa
             </Text>
-            <Text className="text-xs text-text-tertiary">Últimos 30 dias</Text>
+            <Text className="text-xs text-text-tertiary">Últimos 7 dias</Text>
           </View>
-          <View className="mt-4 items-center">
-            <PieChart
-              data={[
-                {
-                  name: "Tela",
-                  population: 38,
-                  color: "#2563EB",
-                  legendFontColor: themeTokens.textMuted,
-                  legendFontSize: 12,
-                },
-                {
-                  name: "Bateria",
-                  population: 22,
-                  color: "#16A34A",
-                  legendFontColor: themeTokens.textMuted,
-                  legendFontSize: 12,
-                },
-                {
-                  name: "Conector",
-                  population: 18,
-                  color: "#F59E0B",
-                  legendFontColor: themeTokens.textMuted,
-                  legendFontSize: 12,
-                },
-                {
-                  name: "Acessórios",
-                  population: 22,
-                  color: "#0EA5E9",
-                  legendFontColor: themeTokens.textMuted,
-                  legendFontSize: 12,
-                },
-              ]}
-              width={chartWidth}
-              height={200}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="10"
-              chartConfig={chartConfig}
-              center={[0, 0]}
-              absolute
-            />
-            <View className="mt-4 w-full gap-2">
-              {[
-                { name: "Tela", value: 38, color: "#2563EB" },
-                { name: "Bateria", value: 22, color: "#16A34A" },
-                { name: "Conector", value: 18, color: "#F59E0B" },
-                { name: "Acessórios", value: 22, color: "#0EA5E9" },
-              ].map((item) => (
-                <Pressable
-                  key={item.name}
-                  className="flex-row items-center justify-between rounded-2xl bg-background-secondary px-4 py-3"
-                  onPress={() =>
-                    setPieTooltip({
-                      title: item.name,
-                      value: `${item.value}% dos serviços`,
-                    })
-                  }
+          <View className="mt-4 items-center relative">
+            {lineTooltip ? (
+              <View
+                className="absolute z-10 rounded-xl px-3 py-2"
+                style={{
+                  left: Math.max(
+                    12,
+                    Math.min(lineTooltip.x - 40, chartWidth - 110),
+                  ),
+                  top: Math.max(8, lineTooltip.y - 48),
+                  backgroundColor: theme === "dark" ? "#111827" : "#111827",
+                }}
+              >
+                <Text
+                  className="text-[11px]"
+                  style={{ color: theme === "dark" ? "#CBD5F1" : "#E5E7EB" }}
                 >
-                  <View className="flex-row items-center gap-3">
-                    <View
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <Text className="text-sm text-text-secondary">
-                      {item.name}
-                    </Text>
-                  </View>
-                  <Text className="text-sm font-semibold text-text-primary">
-                    {item.value}%
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            {pieTooltip ? (
-              <View className="mt-4 rounded-xl bg-background-secondary px-4 py-3">
-                <Text className="text-xs text-text-tertiary">
-                  {pieTooltip.title}
+                  {lineTooltip.title}
                 </Text>
-                <Text className="text-base font-semibold text-text-primary">
-                  {pieTooltip.value}
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: "#FFFFFF" }}
+                >
+                  {lineTooltip.value}
                 </Text>
               </View>
             ) : null}
+            <LineChart
+              data={{
+                labels: lineLabels,
+                datasets: [{ data: lineValues }],
+              }}
+              width={chartWidth}
+              height={lineChartHeight}
+              chartConfig={{
+                ...chartConfig,
+                decimalPlaces: 1,
+              }}
+              bezier
+              withInnerLines={false}
+              onDataPointClick={({ value, index, x, y }) => {
+                setLineTooltip({
+                  title: `Dia ${lineLabels[index]}`,
+                  value: `R$ ${(value * 1000).toFixed(0)}`,
+                  x,
+                  y,
+                });
+              }}
+              style={{ borderRadius: 16 }}
+            />
           </View>
         </View>
+
+        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-semibold text-text-primary">
+              Movimentações recentes
+            </Text>
+            <Text className="text-xs text-text-tertiary">Hoje</Text>
+          </View>
+          <View className="mt-4 gap-3">
+            {loadingMovements ? (
+              <View className="rounded-2xl bg-background-secondary px-4 py-3">
+                <Text className="text-sm text-text-secondary">
+                  Carregando movimentações...
+                </Text>
+              </View>
+            ) : movementError ? (
+              <View className="rounded-2xl bg-background-secondary px-4 py-3">
+                <Text className="text-sm text-state-error">
+                  {movementError}
+                </Text>
+              </View>
+            ) : recentMovements.length === 0 ? (
+              <View className="rounded-2xl bg-background-secondary px-4 py-3">
+                <Text className="text-sm text-text-secondary">
+                  Nenhuma movimentação recente.
+                </Text>
+              </View>
+            ) : (
+              recentMovements.map((movement) => {
+                const signal = movement.type === "in" ? "+" : "-";
+                const valueLabel = `${signal} ${formatCurrencyBR(movement.value)}`;
+                return (
+                  <View
+                    key={movement.id}
+                    className="flex-row items-center justify-between gap-3 rounded-2xl bg-background-secondary px-4 py-3"
+                  >
+                    <View className="flex-1">
+                      <Text
+                        className="text-sm text-text-secondary"
+                        numberOfLines={2}
+                      >
+                        {movement.title}
+                      </Text>
+                      <Text className="text-xs text-text-tertiary">
+                        {movement.dateLabel}
+                      </Text>
+                    </View>
+                    <Text
+                      className={`text-sm font-semibold ${
+                        movement.type === "in"
+                          ? "text-state-success"
+                          : "text-state-error"
+                      }`}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}
+                    >
+                      {valueLabel}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        </View>
+
+        <View className="mt-2 mb-4">
+          <Text className="text-xs uppercase tracking-widest text-text-secondary">
+            Serviços
+          </Text>
+        </View>
+
+        <ServicosPorCategorias
+          chartWidth={chartWidth}
+          chartConfig={chartConfig}
+          textMuted={themeTokens.textMuted}
+        />
 
         <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
           <View className="flex-row items-center justify-between">
@@ -276,6 +349,12 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
               </View>
             </View>
           </View>
+        </View>
+
+        <View className="mt-2 mb-4">
+          <Text className="text-xs uppercase tracking-widest text-text-secondary">
+            Estoque
+          </Text>
         </View>
 
         <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
@@ -343,131 +422,6 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
               }}
               style={{ borderRadius: 16 }}
             />
-          </View>
-        </View>
-
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Evolução do caixa
-            </Text>
-            <Text className="text-xs text-text-tertiary">Últimos 7 dias</Text>
-          </View>
-          <View className="mt-4 items-center relative">
-            {lineTooltip ? (
-              <View
-                className="absolute z-10 rounded-xl px-3 py-2"
-                style={{
-                  left: Math.max(
-                    12,
-                    Math.min(lineTooltip.x - 40, chartWidth - 110),
-                  ),
-                  top: Math.max(8, lineTooltip.y - 48),
-                  backgroundColor: theme === "dark" ? "#111827" : "#111827",
-                }}
-              >
-                <Text
-                  className="text-[11px]"
-                  style={{ color: theme === "dark" ? "#CBD5F1" : "#E5E7EB" }}
-                >
-                  {lineTooltip.title}
-                </Text>
-                <Text
-                  className="text-sm font-semibold"
-                  style={{ color: "#FFFFFF" }}
-                >
-                  {lineTooltip.value}
-                </Text>
-              </View>
-            ) : null}
-            <LineChart
-              data={{
-                labels: lineLabels,
-                datasets: [{ data: lineValues }],
-              }}
-              width={chartWidth}
-              height={lineChartHeight}
-              chartConfig={{
-                ...chartConfig,
-                decimalPlaces: 1,
-              }}
-              bezier
-              withInnerLines={false}
-              onDataPointClick={({ value, index, x, y }) => {
-                setLineTooltip({
-                  title: `Dia ${lineLabels[index]}`,
-                  value: `R$ ${(value * 1000).toFixed(0)}`,
-                  x,
-                  y,
-                });
-              }}
-              style={{ borderRadius: 16 }}
-            />
-          </View>
-        </View>
-
-        <View className="rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Movimentações recentes
-            </Text>
-            <Text className="text-xs text-text-tertiary">Hoje</Text>
-          </View>
-          <View className="mt-4 gap-3">
-            {loadingMovements ? (
-              <View className="rounded-2xl bg-background-secondary px-4 py-3">
-                <Text className="text-sm text-text-secondary">
-                  Carregando movimentações...
-                </Text>
-              </View>
-            ) : movementError ? (
-              <View className="rounded-2xl bg-background-secondary px-4 py-3">
-                <Text className="text-sm text-state-error">
-                  {movementError}
-                </Text>
-              </View>
-            ) : recentMovements.length === 0 ? (
-              <View className="rounded-2xl bg-background-secondary px-4 py-3">
-                <Text className="text-sm text-text-secondary">
-                  Nenhuma movimentação recente.
-                </Text>
-              </View>
-            ) : (
-              recentMovements.map((movement) => {
-                const signal = movement.type === "in" ? "+" : "-";
-                const valueLabel = `${signal} ${formatCurrencyBR(movement.value)}`;
-                return (
-                  <View
-                    key={movement.id}
-                    className="flex-row items-center justify-between gap-3 rounded-2xl bg-background-secondary px-4 py-3"
-                  >
-                    <View className="flex-1">
-                      <Text
-                        className="text-sm text-text-secondary"
-                        numberOfLines={2}
-                      >
-                        {movement.title}
-                      </Text>
-                      <Text className="text-xs text-text-tertiary">
-                        {movement.dateLabel}
-                      </Text>
-                    </View>
-                    <Text
-                      className={`text-sm font-semibold ${
-                        movement.type === "in"
-                          ? "text-state-success"
-                          : "text-state-error"
-                      }`}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.85}
-                    >
-                      {valueLabel}
-                    </Text>
-                  </View>
-                );
-              })
-            )}
           </View>
         </View>
       </View>
