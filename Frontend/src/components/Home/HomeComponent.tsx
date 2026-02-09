@@ -12,7 +12,7 @@ import {
 } from "../../services/Finance.services";
 import { formatCurrencyBR } from "../../utils/formatter";
 import { VendasMensais } from "./Graphics/VendasMensais";
-import { CustoXLucro } from "./Graphics/custoXlucro";
+import { CustoXLucro } from "./Graphics/custoXvendas";
 import { ValuesCards } from "./Cards/ValuesCards";
 
 type HomeComponentProps = {
