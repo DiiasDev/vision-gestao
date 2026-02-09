@@ -51,4 +51,35 @@ export class FinanceController {
       });
     }
   }
+
+  public async updateMovement(req: Request, res: Response) {
+    try {
+      const { id } = req.params ?? {};
+      const payload = req.body ?? {};
+      const result = await this.finance.updateMovement(id, payload);
+      const statusCode = result.success ? 200 : 400;
+      return res.status(statusCode).json(result);
+    } catch (error: any) {
+      console.error("erro ao atualizar movimentação", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao atualizar movimentação",
+      });
+    }
+  }
+
+  public async deleteMovement(req: Request, res: Response) {
+    try {
+      const { id } = req.params ?? {};
+      const result = await this.finance.deleteMovement(id);
+      const statusCode = result.success ? 200 : 400;
+      return res.status(statusCode).json(result);
+    } catch (error: any) {
+      console.error("erro ao excluir movimentação", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao excluir movimentação",
+      });
+    }
+  }
 }

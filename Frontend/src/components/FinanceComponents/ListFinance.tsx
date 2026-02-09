@@ -15,6 +15,7 @@ import {
   FinanceMovementView,
 } from "../../services/Finance.services";
 import FinanceMovimentForm from "./FinanceMovimentForm";
+import { formatDateBR } from "../../utils/formatter";
 
 const formatCurrency = (value: number) =>
   `R$ ${value.toLocaleString("pt-BR")}`;
@@ -105,6 +106,13 @@ export default function ListFinance() {
   const [quickFormType, setQuickFormType] = useState<"in" | "out" | null>(null);
   const [showAllMovements, setShowAllMovements] = useState(false);
   const [quickFormError, setQuickFormError] = useState<string | null>(null);
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
+  const [editingMovement, setEditingMovement] =
+    useState<FinanceMovementView | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<FinanceMovementView | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [rawMovements, setRawMovements] = useState<FinanceMovementView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -639,28 +647,28 @@ export default function ListFinance() {
                   key={movement.id}
                   className="rounded-2xl border border-divider bg-background-secondary p-4"
                 >
-                <View className="flex-row items-center justify-between gap-3">
-                  <Text
-                    className="flex-1 text-sm font-semibold text-text-primary"
-                    numberOfLines={2}
-                  >
-                    {movement.title}
-                  </Text>
-                  <Text
-                    className={`text-sm font-semibold ${
-                      movement.type === "in"
-                        ? "text-state-success"
-                        : "text-state-error"
-                    }`}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.85}
-                  >
-                    {`${movement.type === "in" ? "+" : "-"} ${formatCurrency(
-                      movement.value
-                    )}`}
-                  </Text>
-                </View>
+                  <View className="flex-row items-center justify-between gap-3">
+                    <Text
+                      className="flex-1 text-sm font-semibold text-text-primary"
+                      numberOfLines={2}
+                    >
+                      {movement.title}
+                    </Text>
+                    <Text
+                      className={`text-sm font-semibold ${
+                        movement.type === "in"
+                          ? "text-state-success"
+                          : "text-state-error"
+                      }`}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}
+                    >
+                      {`${movement.type === "in" ? "+" : "-"} ${formatCurrency(
+                        movement.value
+                      )}`}
+                    </Text>
+                  </View>
                   <View className="mt-2 flex-row items-center justify-between">
                     <View>
                       <Text className="text-xs text-text-secondary">
@@ -679,6 +687,28 @@ export default function ListFinance() {
                         {movement.status}
                       </Text>
                     </View>
+                  </View>
+                  <View className="mt-3 flex-row gap-2">
+                    <Pressable
+                      onPress={() => {
+                        setEditingMovement(movement);
+                        setEditFormError(null);
+                        setIsEditFormOpen(true);
+                      }}
+                      className="flex-1 rounded-xl border border-divider px-3 py-2"
+                    >
+                      <Text className="text-xs text-text-secondary">Editar</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        setDeleteTarget(movement);
+                        setDeleteError(null);
+                        setIsDeleteConfirmOpen(true);
+                      }}
+                      className="flex-1 rounded-xl border border-state-error/40 bg-state-error/10 px-3 py-2"
+                    >
+                      <Text className="text-xs text-state-error">Excluir</Text>
+                    </Pressable>
                   </View>
                 </View>
               ))
@@ -760,6 +790,128 @@ export default function ListFinance() {
             </View>
           ) : null}
         </View>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={isEditFormOpen}
+        animationType="slide"
+        onRequestClose={() => setIsEditFormOpen(false)}
+      >
+        <View className="flex-1 bg-background-primary">
+          <View className="flex-row items-center justify-between px-6 pt-6">
+            <Text className="text-lg font-semibold text-text-primary">
+              Editar movimentação
+            </Text>
+            <Pressable
+              onPress={() => setIsEditFormOpen(false)}
+              className="rounded-full border border-divider px-3 py-1"
+            >
+              <Text className="text-sm text-text-secondary">Fechar</Text>
+            </Pressable>
+          </View>
+          <FinanceMovimentForm
+            onBack={() => setIsEditFormOpen(false)}
+            initialData={
+              editingMovement
+                ? {
+                    title: editingMovement.title,
+                    type: editingMovement.type,
+                    category: editingMovement.category ?? undefined,
+                    value: editingMovement.value,
+                    date: formatDateBR(editingMovement.dateISO),
+                    status: editingMovement.status,
+                    channel: editingMovement.channel,
+                    notes: editingMovement.notes ?? undefined,
+                  }
+                : null
+            }
+            submitButtonText="Salvar alterações"
+            onSubmit={async (data) => {
+              if (!editingMovement?.id) return;
+              setEditFormError(null);
+              const result = await FinanceService.updateMovement(
+                editingMovement.id,
+                data
+              );
+              if (result?.success) {
+                await loadMovements();
+                setIsEditFormOpen(false);
+                setEditingMovement(null);
+                return;
+              }
+              setEditFormError(
+                result?.message ?? "Não foi possível atualizar a movimentação."
+              );
+            }}
+          />
+          {editFormError ? (
+            <View className="px-6 pb-6">
+              <View className="rounded-2xl border border-state-error/20 bg-state-error/10 px-4 py-3">
+                <Text className="text-xs text-state-error">{editFormError}</Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={isDeleteConfirmOpen}
+        animationType="fade"
+        onRequestClose={() => setIsDeleteConfirmOpen(false)}
+      >
+        <Pressable
+          onPress={() => setIsDeleteConfirmOpen(false)}
+          className="flex-1 items-center justify-center bg-black/40 px-6"
+        >
+          <Pressable
+            onPress={(event) => event.stopPropagation()}
+            className="w-full rounded-3xl bg-card-background p-5"
+          >
+            <Text className="text-lg font-semibold text-text-primary">
+              Excluir movimentação
+            </Text>
+            <Text className="mt-2 text-sm text-text-secondary">
+              Deseja realmente excluir esta movimentação? Essa ação não pode ser
+              desfeita.
+            </Text>
+            {deleteError ? (
+              <View className="mt-4 rounded-2xl border border-state-error/20 bg-state-error/10 px-4 py-3">
+                <Text className="text-xs text-state-error">{deleteError}</Text>
+              </View>
+            ) : null}
+            <View className="mt-4 flex-row gap-2">
+              <Pressable
+                onPress={() => setIsDeleteConfirmOpen(false)}
+                className="flex-1 rounded-xl border border-divider px-3 py-2"
+              >
+                <Text className="text-xs text-text-secondary">Cancelar</Text>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  if (!deleteTarget?.id) return;
+                  setDeleteError(null);
+                  const result = await FinanceService.deleteMovement(
+                    deleteTarget.id
+                  );
+                  if (result?.success) {
+                    await loadMovements();
+                    setIsDeleteConfirmOpen(false);
+                    setDeleteTarget(null);
+                    return;
+                  }
+                  setDeleteError(
+                    result?.message ?? "Não foi possível excluir a movimentação."
+                  );
+                }}
+                className="flex-1 rounded-xl border border-state-error/40 bg-state-error/10 px-3 py-2"
+              >
+                <Text className="text-xs text-state-error">Excluir</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <Modal

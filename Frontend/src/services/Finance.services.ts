@@ -146,6 +146,103 @@ export class FinanceService {
     }
   }
 
+  static async updateMovement(id: string, payload: Partial<FinanceMovement>) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/finance/movements/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          title: payload.title,
+          type: payload.type,
+          category: payload.category ?? null,
+          value: payload.value ?? null,
+          date: FinanceService.normalizeDateInput(payload.date),
+          status: payload.status ?? null,
+          channel: payload.channel ?? null,
+          notes: payload.notes ?? null,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao atualizar movimentação",
+          movement: null,
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message ?? "Movimentação atualizada",
+        movement: data?.movement ?? null,
+      };
+    } catch (error: any) {
+      console.error("Erro ao atualizar movimentação:", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        movement: null,
+      };
+    }
+  }
+
+  static async deleteMovement(id: string) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${getBaseUrl()}/finance/movements/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao excluir movimentação",
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message ?? "Movimentação excluída",
+      };
+    } catch (error: any) {
+      console.error("Erro ao excluir movimentação:", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
   static async getMovements() {
     try {
       const controller = new AbortController();

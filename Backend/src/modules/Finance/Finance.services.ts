@@ -221,4 +221,104 @@ export class FinanceService {
       };
     }
   }
+
+  public async updateMovement(
+    id: string,
+    payload: Partial<FinanceMovementPayload>,
+  ) {
+    try {
+      const pool = DB.connect();
+      if (!id) {
+        return { success: false, message: "Id da movimentação é obrigatório" };
+      }
+
+      const existingResult = await pool.query(
+        "SELECT * FROM finance_movements WHERE id = $1",
+        [id],
+      );
+      const existing = existingResult.rows[0];
+      if (!existing) {
+        return { success: false, message: "Movimentação não encontrada" };
+      }
+
+      const title = normalizeText(payload.title) ?? existing.title;
+      const type = normalizeType(payload.type) ?? existing.type;
+      const value =
+        payload.value === undefined
+          ? existing.value
+          : normalizeNumber(payload.value);
+      if (value === null) {
+        return { success: false, message: "Valor é obrigatório" };
+      }
+
+      const movementDate =
+        normalizeText(payload.date) ?? existing.movement_date ?? new Date().toISOString();
+
+      const update = `
+        UPDATE finance_movements
+        SET
+          title = $1,
+          category = $2,
+          movement_date = $3,
+          value = $4,
+          status = $5,
+          type = $6,
+          channel = $7,
+          notes = $8,
+          updated_at = NOW()
+        WHERE id = $9
+        RETURNING *;
+      `;
+
+      const result = await pool.query(update, [
+        title,
+        normalizeText(payload.category) ?? existing.category,
+        movementDate,
+        value,
+        normalizeStatus(payload.status) ?? existing.status,
+        type,
+        normalizeChannel(payload.channel) ?? existing.channel,
+        normalizeText(payload.notes) ?? existing.notes,
+        id,
+      ]);
+
+      return {
+        success: true,
+        message: "Movimentação atualizada",
+        movement: result.rows[0] ?? null,
+      };
+    } catch (error: any) {
+      console.error("Erro ao atualizar movimentação:", error);
+      return {
+        success: false,
+        message: "Erro ao atualizar movimentação",
+      };
+    }
+  }
+
+  public async deleteMovement(id: string) {
+    try {
+      const pool = DB.connect();
+      if (!id) {
+        return { success: false, message: "Id da movimentação é obrigatório" };
+      }
+
+      const result = await pool.query(
+        "DELETE FROM finance_movements WHERE id = $1 RETURNING *",
+        [id],
+      );
+
+      return {
+        success: true,
+        message: "Movimentação excluída",
+        movement: result.rows[0] ?? null,
+      };
+    } catch (error: any) {
+      console.error("Erro ao excluir movimentação:", error);
+      return {
+        success: false,
+        message: "Erro ao excluir movimentação",
+      };
+    }
+  }
 }
