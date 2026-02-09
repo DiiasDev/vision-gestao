@@ -328,7 +328,12 @@ export class GraphicsServices {
 
       const normalizeStatus = (value: unknown) => {
         if (value === undefined || value === null) return "";
-        return String(value).trim().toLowerCase();
+        return String(value)
+          .trim()
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/_/g, " ");
       };
 
       const statusList = os.map((item: any) => normalizeStatus(item.status));
