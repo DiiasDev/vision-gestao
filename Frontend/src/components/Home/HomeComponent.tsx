@@ -12,6 +12,7 @@ import {
 } from "../../services/Finance.services";
 import { formatCurrencyBR } from "../../utils/formatter";
 import { VendasMensais } from "./Graphics/VendasMensais";
+import { ValuesCards } from "./Cards/ValuesCards";
 
 type HomeComponentProps = {
   userName?: string;
@@ -135,40 +136,7 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </Text>
         </View>
 
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Visão geral do caixa
-            </Text>
-            <Text className="text-xs text-text-tertiary">Últimos 6 meses</Text>
-          </View>
-          <View className="mt-4 flex-row gap-3">
-            <View className="flex-1 rounded-2xl bg-background-secondary p-4">
-              <Text className="text-xs text-text-secondary">Faturamento</Text>
-              <Text className="mt-1 text-lg font-semibold text-state-success">
-                R$ 34.860
-              </Text>
-              <Text className="mt-1 text-[11px] text-text-tertiary">
-                +18% no semestre
-              </Text>
-            </View>
-            <View className="flex-1 rounded-2xl bg-background-secondary p-4">
-              <Text className="text-xs text-text-secondary">Custos</Text>
-              <Text className="mt-1 text-lg font-semibold text-state-error">
-                R$ 14.920
-              </Text>
-              <Text className="mt-1 text-[11px] text-text-tertiary">
-                42% do total
-              </Text>
-            </View>
-          </View>
-          <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
-            <Text className="text-xs text-text-secondary">Saldo em caixa</Text>
-            <Text className="mt-1 text-xl font-semibold text-text-primary">
-              R$ 12.950
-            </Text>
-          </View>
-        </View>
+        <ValuesCards />
 
         <VendasMensais />
 

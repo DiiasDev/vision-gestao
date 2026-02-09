@@ -96,4 +96,59 @@ export class GraphicsServices {
       };
     }
   }
+
+public async valuesCards() {
+  try {
+    const response = await this.finance.listMovements();
+    const movements = response?.movements ?? [];
+
+    const faturamento = movements.filter(
+      (item: any) => item.type === "in"
+    );
+
+    const totalFaturamento = faturamento.reduce(
+      (acc: number, item: any) => {
+        const valor = Number(item.value) || 0;
+        return acc + valor;
+      },
+      0
+    );
+
+    const despesas = movements.filter(
+      (item: any) => item.type === "out"
+    );
+
+    const totalDespesas = despesas.reduce(
+      (acc: number, item: any) => {
+        const valor = Number(item.value) || 0;
+        return acc + valor;
+      },
+      0
+    );
+
+    const saldo = totalFaturamento - totalDespesas;
+
+    return {
+      success: true,
+      data: {
+        faturamento: totalFaturamento,
+        custo: totalDespesas,
+        saldo: saldo,
+      },
+    };
+  } catch (error: any) {
+    console.error("Erro ao trazer valores dos cards:", error);
+
+    return {
+      success: false,
+      data: {
+        faturamento: 0,
+        custo: 0,
+        saldo: 0,
+      },
+      message: "Erro ao trazer valores dos cards",
+    };
+  }
+}
+
 }
