@@ -21,11 +21,11 @@ type ValuesCardsProps = {
 
 export function ValuesCards({
   title = "Visão geral do caixa",
-  periodLabel = "Últimos 6 meses",
+  periodLabel = "Ano atual",
   faturamentoLabel = "Faturamento",
-  faturamentoHint = "+18% no semestre",
+  faturamentoHint,
   custosLabel = "Custos",
-  custosHint = "42% do total",
+  custosHint,
   saldoLabel = "Saldo em caixa",
 }: ValuesCardsProps) {
   const [data, setData] = useState<ValuesCardsData | null>(null);
@@ -61,6 +61,33 @@ export function ValuesCards({
     };
   }, [data]);
 
+  const formattedHints = useMemo(() => {
+    const formatPercentChange = (value: number | null | undefined) => {
+      if (value === null || value === undefined || !Number.isFinite(value)) {
+        return "Sem histórico";
+      }
+      const rounded = Math.round(value * 10) / 10;
+      const sign = rounded > 0 ? "+" : "";
+      return `${sign}${rounded}%`;
+    };
+
+    const formatSharePercent = (value: number | null | undefined) => {
+      if (value === null || value === undefined || !Number.isFinite(value)) {
+        return "0%";
+      }
+      const rounded = Math.round(value * 10) / 10;
+      return `${rounded}%`;
+    };
+
+    return {
+      faturamento:
+        faturamentoHint ??
+        `${formatPercentChange(data?.faturamentoPercent)} no ano`,
+      custo:
+        custosHint ?? `${formatSharePercent(data?.custoPercent)} do total`,
+    };
+  }, [data, faturamentoHint, custosHint]);
+
   const faturamentoValue = formatted.faturamento;
   const custosValue = formatted.custo;
   const saldoValue = formatted.saldo;
@@ -93,7 +120,7 @@ export function ValuesCards({
                 {faturamentoValue}
               </Text>
               <Text className="mt-1 text-[11px] text-text-tertiary">
-                {faturamentoHint}
+                {formattedHints.faturamento}
               </Text>
             </View>
             <View className="flex-1 rounded-2xl bg-background-secondary p-4">
@@ -102,7 +129,7 @@ export function ValuesCards({
                 {custosValue}
               </Text>
               <Text className="mt-1 text-[11px] text-text-tertiary">
-                {custosHint}
+                {formattedHints.custo}
               </Text>
             </View>
           </View>

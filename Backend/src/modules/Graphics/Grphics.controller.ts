@@ -31,6 +31,8 @@ export class GraphicsController {
           faturamento: 0,
           custo: 0,
           saldo: 0,
+          faturamentoPercent: null,
+          custoPercent: 0,
         },
       });
     }

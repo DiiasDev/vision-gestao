@@ -32,6 +32,8 @@ export type ValuesCardsData = {
   faturamento: number;
   custo: number;
   saldo: number;
+  faturamentoPercent: number | null;
+  custoPercent: number;
 };
 
 export type ValuesCardsResponse = {
@@ -120,14 +122,26 @@ export class GraphicService {
         return {
           success: false,
           message: data?.message ?? "Falha ao carregar valores dos cards",
-          data: { faturamento: 0, custo: 0, saldo: 0 },
+          data: {
+            faturamento: 0,
+            custo: 0,
+            saldo: 0,
+            faturamentoPercent: null,
+            custoPercent: 0,
+          },
         } as ValuesCardsResponse;
       }
 
       return (
         data ?? {
           success: true,
-          data: { faturamento: 0, custo: 0, saldo: 0 },
+          data: {
+            faturamento: 0,
+            custo: 0,
+            saldo: 0,
+            faturamentoPercent: null,
+            custoPercent: 0,
+          },
         }
       );
     } catch (error: any) {
@@ -138,7 +152,13 @@ export class GraphicService {
       return {
         success: false,
         message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
-        data: { faturamento: 0, custo: 0, saldo: 0 },
+        data: {
+          faturamento: 0,
+          custo: 0,
+          saldo: 0,
+          faturamentoPercent: null,
+          custoPercent: 0,
+        },
       } as ValuesCardsResponse;
     }
   }
