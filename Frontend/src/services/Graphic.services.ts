@@ -4,6 +4,26 @@ const getBaseUrl = () =>
   process.env.EXPO_PUBLIC_API_URL ??
   (Platform.OS === "ios" ? "http://localhost:3333" : "http://10.0.2.2:3333");
 
+const formatDateParam = (date: Date | string) => {
+  if (typeof date === "string") return date;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const buildRangeQuery = (range?: { startDate?: Date | string; endDate?: Date | string }) => {
+  if (!range?.startDate || !range?.endDate) return "";
+  const start = formatDateParam(range.startDate);
+  const end = formatDateParam(range.endDate);
+  const params = new URLSearchParams({
+    startDate: start,
+    endDate: end,
+  });
+  const query = params.toString();
+  return query ? `&${query}` : "";
+};
+
 export type VendasMensaisItem = {
   id: string;
   key: string;
@@ -100,13 +120,17 @@ export type ServicosPorCategoriaResponse = {
 };
 
 export class GraphicService {
-  static async getVendasMensais(months = 6) {
+  static async getVendasMensais(
+    months = 6,
+    range?: { startDate?: Date | string; endDate?: Date | string }
+  ) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+      const rangeQuery = buildRangeQuery(range);
       const response = await fetch(
-        `${getBaseUrl()}/graphics/painel?months=${months}`,
+        `${getBaseUrl()}/graphics/painel?months=${months}${rangeQuery}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -154,12 +178,16 @@ export class GraphicService {
     }
   }
 
-  static async getValuesCards() {
+  static async getValuesCards(range?: {
+    startDate?: Date | string;
+    endDate?: Date | string;
+  }) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(`${getBaseUrl()}/graphics/cards`, {
+      const rangeQuery = buildRangeQuery(range);
+      const response = await fetch(`${getBaseUrl()}/graphics/cards?${rangeQuery.slice(1)}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -220,16 +248,23 @@ export class GraphicService {
     }
   }
 
-  static async getCustoXLucro() {
+  static async getCustoXLucro(range?: {
+    startDate?: Date | string;
+    endDate?: Date | string;
+  }) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(`${getBaseUrl()}/graphics/custo-x-lucro`, {
+      const rangeQuery = buildRangeQuery(range);
+      const response = await fetch(
+        `${getBaseUrl()}/graphics/custo-x-lucro?${rangeQuery.slice(1)}`,
+        {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-      });
+        }
+      );
 
       clearTimeout(timeoutId);
 
@@ -289,16 +324,23 @@ export class GraphicService {
     }
   }
 
-  static async getStatusOS() {
+  static async getStatusOS(range?: {
+    startDate?: Date | string;
+    endDate?: Date | string;
+  }) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(`${getBaseUrl()}/graphics/status-os`, {
+      const rangeQuery = buildRangeQuery(range);
+      const response = await fetch(
+        `${getBaseUrl()}/graphics/status-os?${rangeQuery.slice(1)}`,
+        {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-      });
+        }
+      );
 
       clearTimeout(timeoutId);
 
@@ -337,13 +379,17 @@ export class GraphicService {
     }
   }
 
-  static async getServicosPorCategoria() {
+  static async getServicosPorCategoria(range?: {
+    startDate?: Date | string;
+    endDate?: Date | string;
+  }) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+      const rangeQuery = buildRangeQuery(range);
       const response = await fetch(
-        `${getBaseUrl()}/graphics/servicos-por-categoria`,
+        `${getBaseUrl()}/graphics/servicos-por-categoria?${rangeQuery.slice(1)}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },

@@ -49,7 +49,11 @@ const buildFallbackMonths = () => {
   return months;
 };
 
-export function VendasMensais() {
+export function VendasMensais({
+  dateRange,
+}: {
+  dateRange?: { startDate: Date; endDate: Date };
+}) {
   const { theme } = useTheme();
   const screenWidth = Dimensions.get("window").width;
   const chartWidth = screenWidth - 48;
@@ -107,7 +111,12 @@ export function VendasMensais() {
     const load = async () => {
       setLoading(true);
       setError(null);
-      const result = await GraphicService.getVendasMensais(6);
+      const result = await GraphicService.getVendasMensais(
+        6,
+        dateRange
+          ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+          : undefined
+      );
       if (!active) return;
       if (result?.success) {
         setMonths(result.meses ?? []);
@@ -121,14 +130,38 @@ export function VendasMensais() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [dateRange?.endDate, dateRange?.startDate]);
+
+  const formatRangeLabel = (date: Date) =>
+    date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+  const periodLabel = dateRange
+    ? `${formatRangeLabel(dateRange.startDate)} - ${formatRangeLabel(
+        dateRange.endDate
+      )}`
+    : "Produtos + serviços";
+
+  const normalizeValue = (raw: unknown) => {
+    if (raw === undefined || raw === null || raw === "") return 0;
+    if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
+    const text = String(raw).trim();
+    if (!text) return 0;
+    const normalized = text.includes(",")
+      ? text.replace(/\./g, "").replace(",", ".")
+      : text;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
 
   const displayMonths = months.length ? months : buildFallbackMonths();
   const barLabels = displayMonths.map((item) => item.label);
-  const barValues = displayMonths.map((item) =>
-    Number.isFinite(item.valor) ? item.valor : 0
-  );
+  const barValues = displayMonths.map((item) => normalizeValue(item.valor));
   const barMax = Math.max(...barValues, 1);
+  const hasData =
+    Array.isArray(barValues) && barValues.some((value) => value > 0);
 
   return (
     <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
@@ -136,7 +169,13 @@ export function VendasMensais() {
         <Text className="text-base font-semibold text-text-primary">
           Vendas mensais
         </Text>
-        <Text className="text-xs text-text-tertiary">Produtos + serviços</Text>
+        <Text
+          className="text-xs text-text-tertiary"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {periodLabel}
+        </Text>
       </View>
 
       {loading ? (
@@ -148,6 +187,12 @@ export function VendasMensais() {
       ) : error ? (
         <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
           <Text className="text-sm text-state-error">{error}</Text>
+        </View>
+      ) : !hasData ? (
+        <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
+          <Text className="text-sm text-text-secondary">
+            Nenhuma venda registrada no período.
+          </Text>
         </View>
       ) : (
         <View className="mt-4 items-center relative">

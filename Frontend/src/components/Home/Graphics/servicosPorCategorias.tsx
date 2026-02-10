@@ -32,13 +32,18 @@ type ServicosPorCategoriasProps = {
     };
   };
   textMuted: string;
+  dateRange?: { startDate: Date; endDate: Date };
 };
 
 export function ServicosPorCategorias({
   chartWidth,
   chartConfig,
   textMuted,
+  dateRange,
 }: ServicosPorCategoriasProps) {
+  const range = dateRange
+    ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+    : undefined;
   const [pieTooltip, setPieTooltip] = useState<{
     title: string;
     value: string;
@@ -67,7 +72,7 @@ export function ServicosPorCategorias({
     const load = async () => {
       setLoading(true);
       setError(null);
-      const result = await GraphicService.getServicosPorCategoria();
+      const result = await GraphicService.getServicosPorCategoria(range);
       if (!active) return;
       if (result?.success) {
         const nextData = result.data ?? { total: 0, categorias: [], dias: 30 };
@@ -86,7 +91,7 @@ export function ServicosPorCategorias({
     return () => {
       active = false;
     };
-  }, []);
+  }, [range?.endDate, range?.startDate]);
 
   useEffect(() => {
     setPieTooltip(null);
@@ -136,7 +141,18 @@ export function ServicosPorCategorias({
 
   const totalGeral = data?.total ?? 0;
   const totalFiltrado = filteredTotal;
+  const formatRangeLabel = (date: Date) =>
+    date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
   const diasLabel = data?.dias ?? 30;
+  const periodLabel = dateRange
+    ? `${formatRangeLabel(dateRange.startDate)} - ${formatRangeLabel(
+        dateRange.endDate
+      )}`
+    : `Últimos ${diasLabel} dias`;
   const pieSize = Math.min(Math.max(chartWidth - 40, 140), 240);
   const pieCenter = Math.max((chartWidth - pieSize) / 2, 0);
   const pieOffset = pieCenter + 6;
@@ -169,8 +185,12 @@ export function ServicosPorCategorias({
           Serviços por categoria
         </Text>
         <View className="items-end">
-          <Text className="text-xs text-text-tertiary">
-            Últimos {diasLabel} dias
+          <Text
+            className="text-xs text-text-tertiary"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {periodLabel}
           </Text>
           <Text className="text-xs text-text-secondary">
             {totalGeral} serviços

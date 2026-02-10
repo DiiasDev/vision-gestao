@@ -8,7 +8,11 @@ import {
 } from "../../../services/Graphic.services";
 import { formatCurrencyBR } from "../../../utils/formatter";
 
-export function CustoXLucro() {
+export function CustoXLucro({
+  dateRange,
+}: {
+  dateRange?: { startDate: Date; endDate: Date };
+}) {
   const { theme } = useTheme();
   const screenWidth = Dimensions.get("window").width;
   const chartWidth = screenWidth - 48;
@@ -32,7 +36,11 @@ export function CustoXLucro() {
     const load = async () => {
       setLoading(true);
       setError(null);
-      const result = await GraphicService.getCustoXLucro();
+      const result = await GraphicService.getCustoXLucro(
+        dateRange
+          ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+          : undefined
+      );
       if (!active) return;
       if (result?.success) {
         setData(result.data ?? null);
@@ -46,8 +54,14 @@ export function CustoXLucro() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [dateRange?.endDate, dateRange?.startDate]);
 
+  const formatRangeLabel = (date: Date) =>
+    date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
   const services = data?.servicos ?? [];
   const maxServices = 6;
   const sorted = [...services].sort((a, b) => {
@@ -86,6 +100,32 @@ export function CustoXLucro() {
           },
         ]
       : primary;
+
+  const periodLabel = dateRange
+    ? `${formatRangeLabel(dateRange.startDate)} - ${formatRangeLabel(
+        dateRange.endDate
+      )}`
+    : "Últimos 30 dias";
+
+  const normalizeValue = (raw: unknown) => {
+    if (raw === undefined || raw === null || raw === "") return 0;
+    if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
+    const text = String(raw).trim();
+    if (!text) return 0;
+    const normalized = text.includes(",")
+      ? text.replace(/\./g, "").replace(",", ".")
+      : text;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const hasData =
+    Array.isArray(aggregated) &&
+    aggregated.some(
+      (item) =>
+        normalizeValue(item.totalVenda ?? item.totalValor) > 0 ||
+        normalizeValue(item.totalCusto) > 0
+    );
 
   const labels = aggregated.map((item) =>
     item.servicoNome.length > 12
@@ -151,7 +191,13 @@ export function CustoXLucro() {
         <Text className="text-base font-semibold text-text-primary">
           Custos x vendas por serviço
         </Text>
-        <Text className="text-xs text-text-tertiary">Últimos 30 dias</Text>
+        <Text
+          className="text-xs text-text-tertiary"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {periodLabel}
+        </Text>
       </View>
 
       {loading ? (
@@ -164,7 +210,7 @@ export function CustoXLucro() {
         <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
           <Text className="text-sm text-state-error">{error}</Text>
         </View>
-      ) : aggregated.length ? (
+      ) : aggregated.length && hasData ? (
         <>
           <View className="mt-4 items-center">
             {tooltip ? (

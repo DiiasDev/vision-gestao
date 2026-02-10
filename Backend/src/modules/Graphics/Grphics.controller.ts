@@ -4,12 +4,24 @@ import type { Response, Request } from "express";
 export class GraphicsController {
   public GraphicServices = new GraphicsServices();
 
+  private getRangeParams(req: Request) {
+    const startRaw = req.query.startDate;
+    const endRaw = req.query.endDate;
+    const startDate = typeof startRaw === "string" ? startRaw : undefined;
+    const endDate = typeof endRaw === "string" ? endRaw : undefined;
+    return { startDate, endDate };
+  }
+
   public async getVendasMensais(req: Request, res: Response) {
     try {
       const monthsRaw = req.query.months;
       const months =
         typeof monthsRaw === "string" ? Number(monthsRaw) : undefined;
-      const data = await this.GraphicServices.vendasMensais(months ?? 6);
+      const range = this.getRangeParams(req);
+      const data = await this.GraphicServices.vendasMensais(
+        months ?? 6,
+        range,
+      );
 
       return res.status(200).json(data);
     } catch (error: any) {
@@ -18,9 +30,10 @@ export class GraphicsController {
     }
   }
 
-  public async getValuesCards(_req: Request, res: Response) {
+  public async getValuesCards(req: Request, res: Response) {
     try {
-      const data = await this.GraphicServices.valuesCards();
+      const range = this.getRangeParams(req);
+      const data = await this.GraphicServices.valuesCards(range);
 
       return res.status(200).json(data);
     } catch (error: any) {
@@ -38,9 +51,10 @@ export class GraphicsController {
     }
   }
 
-  public async getCustoXLucro(_req: Request, res: Response) {
+  public async getCustoXLucro(req: Request, res: Response) {
     try {
-      const data = await this.GraphicServices.custoXlucro();
+      const range = this.getRangeParams(req);
+      const data = await this.GraphicServices.custoXlucro(range);
 
       return res.status(200).json(data);
     } catch (error: any) {
@@ -51,7 +65,8 @@ export class GraphicsController {
 
   public async getStatusOS(req: Request, res: Response) {
     try {
-      const data = await this.GraphicServices.statusOS();
+      const range = this.getRangeParams(req);
+      const data = await this.GraphicServices.statusOS(range);
 
       res.status(200).json(data);
     } catch (error: any) {
@@ -59,9 +74,10 @@ export class GraphicsController {
     }
   }
 
-  public async getServicosPorCategoria(_req: Request, res: Response) {
+  public async getServicosPorCategoria(req: Request, res: Response) {
     try {
-      const data = await this.GraphicServices.servicosPorCategoria();
+      const range = this.getRangeParams(req);
+      const data = await this.GraphicServices.servicosPorCategoria(range);
       res.status(200).json(data);
     } catch (error: any) {
       console.error("erro ao trazer dados para servicos por categoria:", error);

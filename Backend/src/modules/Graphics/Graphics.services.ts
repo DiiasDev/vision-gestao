@@ -6,10 +6,78 @@ export class GraphicsServices {
   public finance = new FinanceService();
   public services = new ServicesService();
 
-  public async vendasMensais(monthsCount = 6) {
+  private resolveRange(startDate?: string, endDate?: string) {
+    const start = startDate ? moment(startDate).startOf("day") : null;
+    const end = endDate ? moment(endDate).endOf("day") : null;
+    if (start && end && start.isValid() && end.isValid()) {
+      return { start, end };
+    }
+    return null;
+  }
+
+  private parseDate(raw: any) {
+    if (!raw) return null;
+    if (raw instanceof Date) {
+      const parsed = moment(raw);
+      return parsed.isValid() ? parsed : null;
+    }
+    if (typeof raw === "number") {
+      const parsed = moment(raw);
+      return parsed.isValid() ? parsed : null;
+    }
+    const trimmed = String(raw).trim();
+    const normalized = trimmed.replace(/ ([+-]\d{2})(\d{2})$/, " $1:$2");
+    const parsed = moment.parseZone(
+      normalized,
+      [
+        moment.ISO_8601,
+        "YYYY-MM-DD",
+        "YYYY-MM-DDTHH:mm:ss.SSSZ",
+        "YYYY-MM-DDTHH:mm:ss.SSSZZ",
+        "YYYY-MM-DD HH:mm:ss.SSS ZZ",
+        "YYYY-MM-DD HH:mm:ss.SSS Z",
+        "YYYY-MM-DD HH:mm:ss ZZ",
+        "YYYY-MM-DD HH:mm:ss Z",
+        "YYYY-MM-DD HH:mm:ss",
+        "YYYY-MM-DD HH:mm:ss.SSS",
+        "DD/MM/YYYY",
+        "DD/MM/YY",
+      ],
+      true
+    );
+    if (parsed.isValid()) return parsed;
+    const fallback = moment(trimmed);
+    return fallback.isValid() ? fallback : null;
+  }
+
+  public async vendasMensais(
+    monthsCount = 6,
+    range?: { startDate?: string; endDate?: string },
+  ) {
     try {
       const safeMonths = Math.max(1, Math.min(Number(monthsCount) || 6, 12));
       const financeData = (await this.finance.listMovements()).movements ?? [];
+      const resolvedRange = this.resolveRange(
+        range?.startDate,
+        range?.endDate,
+      );
+      if (resolvedRange) {
+        console.log("[vendasMensais] range:", {
+          start: resolvedRange.start.format(),
+          end: resolvedRange.end.format(),
+          count: financeData.length,
+        });
+        const sample = financeData[0];
+        if (sample) {
+          const rawDate =
+            sample.date ?? sample.created_at ?? sample.updated_at ?? null;
+          const parsed = this.parseDate(rawDate);
+          console.log("[vendasMensais] sample date:", {
+            raw: rawDate,
+            parsed: parsed ? parsed.format() : null,
+          });
+        }
+      }
 
       const monthKeys = [
         "jan",
@@ -46,14 +114,87 @@ export class GraphicsServices {
         { valor: number; label: string; year: number; month: number }
       > = {};
 
-      for (let i = safeMonths - 1; i >= 0; i -= 1) {
-        const current = moment().subtract(i, "months");
+      if (resolvedRange) {
+        const monthStart = resolvedRange.start.clone().startOf("month");
+        const monthEnd = resolvedRange.end.clone().startOf("month");
+        const months: moment.Moment[] = [];
+        let cursor = monthStart.clone();
+        while (cursor.isSameOrBefore(monthEnd, "month")) {
+          months.push(cursor.clone());
+          cursor = cursor.add(1, "month");
+        }
+
+        for (const current of months) {
+          const initialDate = current.clone().startOf("month");
+          const endDate = current.clone().endOf("month");
+          const filterStart = moment.max(initialDate, resolvedRange.start);
+          const filterEnd = moment.min(endDate, resolvedRange.end);
+
+          const vendasDoMes = financeData.filter((data: any) => {
+            const parsedDate = this.parseDate(
+              data.date ??
+                data.movement_date ??
+                data.created_at ??
+                data.updated_at,
+            );
+            if (!parsedDate) return false;
+            return parsedDate.isBetween(filterStart, filterEnd, undefined, "[]");
+          });
+
+          const entradas = vendasDoMes.filter((data: any) => data.type === "in");
+
+          const somaValor = entradas.reduce((acc: number, item: any) => {
+            const rawValue = item.value ?? 0;
+            const value =
+              typeof rawValue === "number"
+                ? rawValue
+                : Number(String(rawValue ?? 0).replace(",", "."));
+            return acc + (Number.isFinite(value) ? value : 0);
+          }, 0);
+
+          const monthIndex = current.month();
+          const label = monthLabels[monthIndex] ?? "";
+          const shortKey = monthKeys[monthIndex] ?? "";
+          const valor = somaValor;
+          const item = {
+            id: current.format("YYYY-MM"),
+            key: shortKey,
+            label,
+            valor,
+            year: current.year(),
+            month: monthIndex + 1,
+          };
+          meses.push(item);
+          if (shortKey) {
+            porMes[shortKey] = {
+              valor,
+              label,
+              year: item.year,
+              month: item.month,
+            };
+          }
+          console.log("[vendasMensais] month:", {
+            month: item.id,
+            total: somaValor,
+            entries: entradas.length,
+          });
+        }
+      } else {
+        for (let i = safeMonths - 1; i >= 0; i -= 1) {
+          const current = moment().subtract(i, "months");
         const initialDate = current.clone().startOf("month");
         const endDate = current.clone().endOf("month");
 
-        const vendasDoMes = financeData.filter((data: any) =>
-          moment(data.date).isBetween(initialDate, endDate, undefined, "[]"),
-        );
+        const vendasDoMes = financeData.filter((data: any) => {
+          const parsedDate = this.parseDate(
+            data.date ??
+              data.movement_date ??
+              data.created_at ??
+              data.updated_at,
+          );
+          if (!parsedDate) return false;
+          return parsedDate.isBetween(initialDate, endDate, undefined, "[]");
+        });
 
         const entradas = vendasDoMes.filter((data: any) => data.type === "in");
 
@@ -88,6 +229,7 @@ export class GraphicsServices {
           };
         }
       }
+      }
 
       return {
         success: true,
@@ -105,7 +247,7 @@ export class GraphicsServices {
     }
   }
 
-  public async valuesCards() {
+  public async valuesCards(range?: { startDate?: string; endDate?: string }) {
     try {
       const response = await this.finance.listMovements();
       const movements = response?.movements ?? [];
@@ -122,17 +264,29 @@ export class GraphicsServices {
         return Number.isFinite(parsed) ? parsed : 0;
       };
 
+      const resolvedRange = this.resolveRange(
+        range?.startDate,
+        range?.endDate,
+      );
       const now = moment();
-      const currentStart = now.clone().startOf("year");
-      const currentEnd = now.clone().endOf("year");
-      const previousStart = currentStart
-        .clone()
-        .subtract(1, "year")
-        .startOf("year");
+      const currentStart = resolvedRange
+        ? resolvedRange.start.clone()
+        : now.clone().startOf("year");
+      const currentEnd = resolvedRange
+        ? resolvedRange.end.clone()
+        : now.clone().endOf("year");
+      const diffDays = currentEnd.diff(currentStart, "days") + 1;
       const previousEnd = currentStart.clone().subtract(1, "day").endOf("day");
+      const previousStart = previousEnd
+        .clone()
+        .subtract(diffDays - 1, "days")
+        .startOf("day");
 
-      const isInRange = (date: any, start: moment.Moment, end: moment.Moment) =>
-        moment(date).isBetween(start, end, undefined, "[]");
+      const isInRange = (date: any, start: moment.Moment, end: moment.Moment) => {
+        const parsedDate = this.parseDate(date);
+        if (!parsedDate) return false;
+        return parsedDate.isBetween(start, end, undefined, "[]");
+      };
 
       const currentMovements = movements.filter((item: any) =>
         isInRange(item.date, currentStart, currentEnd),
@@ -204,9 +358,51 @@ export class GraphicsServices {
     }
   }
 
-  public async custoXlucro() {
+  public async custoXlucro(range?: { startDate?: string; endDate?: string }) {
     try {
       const os = (await this.services.getServicesRealized()).services_realized;
+      const resolvedRange = this.resolveRange(
+        range?.startDate,
+        range?.endDate,
+      );
+      if (resolvedRange) {
+        console.log("[custoXlucro] range:", {
+          start: resolvedRange.start.format(),
+          end: resolvedRange.end.format(),
+          count: os.length,
+        });
+        const sample = os[0];
+        if (sample) {
+          const rawDate = sample.data_servico ?? sample.criado_em ?? null;
+          const parsed = this.parseDate(rawDate);
+          console.log("[custoXlucro] sample date:", {
+            raw: rawDate,
+            parsed: parsed ? parsed.format() : null,
+          });
+        }
+      }
+      const osFiltered = resolvedRange
+        ? os.filter((item: any) => {
+            const rawDate =
+              item.data_servico ??
+              item.criado_em ??
+              item.created_at ??
+              item.updated_at;
+            const parsedDate = this.parseDate(rawDate);
+            if (!parsedDate) return false;
+            return parsedDate.isBetween(
+              resolvedRange.start,
+              resolvedRange.end,
+              undefined,
+              "[]",
+            );
+          })
+        : os;
+      if (resolvedRange) {
+        console.log("[custoXlucro] filtered:", {
+          count: osFiltered.length,
+        });
+      }
 
       const normalizeValue = (raw: any) => {
         if (raw === undefined || raw === null || raw === "") return 0;
@@ -219,7 +415,7 @@ export class GraphicsServices {
         return Number.isFinite(parsed) ? parsed : 0;
       };
 
-      const agrupado = os.reduce((acc: any, item: any) => {
+      const agrupado = osFiltered.reduce((acc: any, item: any) => {
         const servicoId = String(item.servico_id ?? "outros");
         const servicoNome = String(item.servico_nome ?? "Outros");
         const valor = normalizeValue(item.valor_total ?? item.valor_servico);
@@ -322,9 +518,30 @@ export class GraphicsServices {
     }
   }
 
-  public async statusOS() {
+  public async statusOS(range?: { startDate?: string; endDate?: string }) {
     try {
       const os = (await this.services.getServicesRealized()).services_realized;
+      const resolvedRange = this.resolveRange(
+        range?.startDate,
+        range?.endDate,
+      );
+      const osFiltered = resolvedRange
+        ? os.filter((item: any) => {
+            const rawDate =
+              item.data_servico ??
+              item.criado_em ??
+              item.created_at ??
+              item.updated_at;
+            const parsedDate = this.parseDate(rawDate);
+            if (!parsedDate) return false;
+            return parsedDate.isBetween(
+              resolvedRange.start,
+              resolvedRange.end,
+              undefined,
+              "[]",
+            );
+          })
+        : os;
 
       const normalizeStatus = (value: unknown) => {
         if (value === undefined || value === null) return "";
@@ -336,7 +553,9 @@ export class GraphicsServices {
           .replace(/_/g, " ");
       };
 
-      const statusList = os.map((item: any) => normalizeStatus(item.status));
+      const statusList = osFiltered.map((item: any) =>
+        normalizeStatus(item.status),
+      );
 
       const concluidas = statusList.filter(
         (status) => status === "concluido" || status === "concluida",
@@ -369,7 +588,9 @@ export class GraphicsServices {
     }
   }
 
-  public async servicosPorCategoria(){
+  public async servicosPorCategoria(
+    range?: { startDate?: string; endDate?: string },
+  ){
     try{
       const servicesRealized =
         (await this.services.getServicesRealized()).services_realized ?? [];
@@ -386,14 +607,28 @@ export class GraphicsServices {
         {},
       );
 
-      const startDate = moment().subtract(30, "days").startOf("day");
-      const endDate = moment().endOf("day");
+      const resolvedRange = this.resolveRange(
+        range?.startDate,
+        range?.endDate,
+      );
+      const startDate = resolvedRange
+        ? resolvedRange.start
+        : moment().subtract(30, "days").startOf("day");
+      const endDate = resolvedRange
+        ? resolvedRange.end
+        : moment().endOf("day");
 
       const counts = servicesRealized.reduce(
         (acc: Record<string, number>, item: any) => {
-          const rawDate = item.data_servico ?? item.criado_em;
+          const rawDate =
+            item.data_servico ??
+            item.criado_em ??
+            item.created_at ??
+            item.updated_at;
           if (rawDate) {
-            const isInRange = moment(rawDate).isBetween(
+            const parsedDate = this.parseDate(rawDate);
+            if (!parsedDate) return acc;
+            const isInRange = parsedDate.isBetween(
               startDate,
               endDate,
               undefined,
@@ -431,13 +666,15 @@ export class GraphicsServices {
         })
         .sort((a, b) => b.quantidade - a.quantidade);
 
+      const dias = Math.max(endDate.diff(startDate, "days") + 1, 1);
+
       return{
         success: true,
         message: "Dados trazidos com sucesso para servicos por categoria",
         data: {
           total,
           categorias,
-          dias: 30,
+          dias,
         }
       }
     }catch(error: any){

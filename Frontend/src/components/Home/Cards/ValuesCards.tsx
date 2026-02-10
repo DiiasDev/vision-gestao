@@ -17,16 +17,18 @@ type ValuesCardsProps = {
   custosHint?: string;
   saldoLabel?: string;
   saldoValue?: string;
+  dateRange?: { startDate: Date; endDate: Date };
 };
 
 export function ValuesCards({
   title = "Visão geral do caixa",
-  periodLabel = "Ano atual",
+  periodLabel,
   faturamentoLabel = "Faturamento",
   faturamentoHint,
   custosLabel = "Custos",
   custosHint,
   saldoLabel = "Saldo em caixa",
+  dateRange,
 }: ValuesCardsProps) {
   const [data, setData] = useState<ValuesCardsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,11 @@ export function ValuesCards({
     const load = async () => {
       setLoading(true);
       setError(null);
-      const result = await GraphicService.getValuesCards();
+      const result = await GraphicService.getValuesCards(
+        dateRange
+          ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+          : undefined
+      );
       if (!active) return;
       if (result?.success) {
         setData(result.data);
@@ -51,7 +57,27 @@ export function ValuesCards({
     return () => {
       active = false;
     };
-  }, []);
+  }, [dateRange?.endDate, dateRange?.startDate]);
+
+  const formatRangeLabel = (date: Date) =>
+    date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+
+  const periodText =
+    periodLabel ??
+    (dateRange
+      ? `${formatRangeLabel(dateRange.startDate)} - ${formatRangeLabel(
+          dateRange.endDate
+        )}`
+      : "Ano atual");
+
+  const hasData =
+    (data?.faturamento ?? 0) !== 0 ||
+    (data?.custo ?? 0) !== 0 ||
+    (data?.saldo ?? 0) !== 0;
 
   const formatted = useMemo(() => {
     return {
@@ -97,7 +123,13 @@ export function ValuesCards({
         <Text className="text-base font-semibold text-text-primary">
           {title}
         </Text>
-        <Text className="text-xs text-text-tertiary">{periodLabel}</Text>
+        <Text
+          className="text-xs text-text-tertiary"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {periodText}
+        </Text>
       </View>
       {loading ? (
         <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
@@ -108,6 +140,12 @@ export function ValuesCards({
       ) : error ? (
         <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
           <Text className="text-sm text-state-error">{error}</Text>
+        </View>
+      ) : !hasData ? (
+        <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
+          <Text className="text-sm text-text-secondary">
+            Sem movimentações no período.
+          </Text>
         </View>
       ) : (
         <>

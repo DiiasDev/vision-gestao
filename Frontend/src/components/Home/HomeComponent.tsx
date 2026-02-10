@@ -42,10 +42,9 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
   const [movementError, setMovementError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRangeValue>(() => {
     const endDate = new Date();
-    const startDate = new Date(endDate);
-    startDate.setMonth(startDate.getMonth() - 1);
+    const startDate = new Date(endDate.getFullYear(), 0, 1);
     return {
-      preset: "1m",
+      preset: "custom",
       startDate,
       endDate,
     };
@@ -167,11 +166,11 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </Text>
         </View>
 
-        <ValuesCards />
+        <ValuesCards dateRange={dateRange} />
 
-        <VendasMensais />
+        <VendasMensais dateRange={dateRange} />
 
-        <CustoXLucro />
+        <CustoXLucro dateRange={dateRange} />
 
         <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
           <View className="flex-row items-center justify-between">
@@ -248,9 +247,10 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           chartWidth={chartWidth}
           chartConfig={chartConfig}
           textMuted={themeTokens.textMuted}
+          dateRange={dateRange}
         />
 
-        <StatusOS />
+        <StatusOS dateRange={dateRange} />
 
         <View className="mt-2 mb-4">
           <Text className="text-xs uppercase tracking-widest text-text-secondary">

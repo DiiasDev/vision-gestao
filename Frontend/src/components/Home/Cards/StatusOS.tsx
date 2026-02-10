@@ -11,6 +11,7 @@ type StatusOSProps = {
   agendadasLabel?: string;
   emExecucaoLabel?: string;
   concluidasLabel?: string;
+  dateRange?: { startDate: Date; endDate: Date };
 };
 
 type StatusItem = {
@@ -22,10 +23,11 @@ type StatusItem = {
 
 export function StatusOS({
   title = "Status das ordens de serviço",
-  periodLabel = "Hoje",
+  periodLabel,
   agendadasLabel = "Agendadas",
   emExecucaoLabel = "Em andamento",
   concluidasLabel = "Concluídas",
+  dateRange,
 }: StatusOSProps) {
   const [data, setData] = useState<StatusOSData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,11 @@ export function StatusOS({
     const load = async () => {
       setLoading(true);
       setError(null);
-      const result = await GraphicService.getStatusOS();
+      const result = await GraphicService.getStatusOS(
+        dateRange
+          ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+          : undefined
+      );
       if (!active) return;
       if (result?.success) {
         setData(result.data);
@@ -50,7 +56,21 @@ export function StatusOS({
     return () => {
       active = false;
     };
-  }, []);
+  }, [dateRange?.endDate, dateRange?.startDate]);
+
+  const formatRangeLabel = (date: Date) =>
+    date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+  const periodText =
+    periodLabel ??
+    (dateRange
+      ? `${formatRangeLabel(dateRange.startDate)} - ${formatRangeLabel(
+          dateRange.endDate
+        )}`
+      : "Hoje");
 
   const items = useMemo<StatusItem[]>(() => {
     const source = data ?? {
@@ -91,7 +111,13 @@ export function StatusOS({
         <Text className="text-base font-semibold text-text-primary">
           {title}
         </Text>
-        <Text className="text-xs text-text-tertiary">{periodLabel}</Text>
+        <Text
+          className="text-xs text-text-tertiary"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {periodText}
+        </Text>
       </View>
       {loading ? (
         <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
@@ -102,6 +128,12 @@ export function StatusOS({
       ) : error ? (
         <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
           <Text className="text-sm text-state-error">{error}</Text>
+        </View>
+      ) : total === 0 ? (
+        <View className="mt-4 rounded-2xl bg-background-secondary px-4 py-3">
+          <Text className="text-sm text-text-secondary">
+            Nenhuma OS no período.
+          </Text>
         </View>
       ) : (
         <View className="mt-4 gap-3">
