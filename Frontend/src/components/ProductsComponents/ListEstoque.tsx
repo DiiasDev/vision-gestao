@@ -11,6 +11,10 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  DateFilter,
+  type DateRangeValue,
+} from "../Home/Filters/DateFilter";
 import FormComponent from "../FormComponent/FormComponent";
 import FormEstoque from "./FormEstoque";
 import { fieldsProduct } from "../../Fields/ProductsForm";
@@ -102,6 +106,20 @@ const formatMovementDate = (value?: string | null) => {
   }
 };
 
+const startOfDay = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const createInitialDateRange = (): DateRangeValue => {
+  const endDate = startOfDay(new Date());
+  const startDate = new Date(endDate);
+  startDate.setMonth(startDate.getMonth() - 1);
+  return {
+    preset: "1m",
+    startDate,
+    endDate,
+  };
+};
+
 const getAutomaticMovementMessage = (movement: StockMovement) => {
   if (movement.origem === "manual") {
     return movement.tipo === "entrada"
@@ -141,7 +159,10 @@ export default function ListEstoque({
   const [stockFormType, setStockFormType] = useState<"entrada" | "saida" | null>(
     null,
   );
-  const [movements, setMovements] = useState<Movimentacao[]>([]);
+  const [movementDateRange, setMovementDateRange] = useState<DateRangeValue>(
+    createInitialDateRange(),
+  );
+  const [movements, setMovements] = useState<StockMovement[]>([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [movementsRefreshing, setMovementsRefreshing] = useState(false);
   const [movementsError, setMovementsError] = useState<string | null>(null);
@@ -216,12 +237,27 @@ export default function ListEstoque({
       ? result.movements
       : [];
 
-    const mapped = rawMovements
+    setMovements(rawMovements);
+    setMovementsLoading(false);
+  }, [unitsByProductId]);
+
+  const filteredMovements = useMemo(() => {
+    const rangeStart = startOfDay(movementDateRange.startDate).getTime();
+    const rangeEnd = startOfDay(movementDateRange.endDate).getTime();
+
+    return movements
+      .filter((movement) => {
+        const timestamp = toTimestamp(movement.criado_em);
+        if (!timestamp) return false;
+        const movementDay = startOfDay(new Date(timestamp)).getTime();
+        return movementDay >= rangeStart && movementDay <= rangeEnd;
+      })
       .sort((a, b) => toTimestamp(b.criado_em) - toTimestamp(a.criado_em))
       .map((movement) => {
-        const productId = movement.produto_id !== undefined && movement.produto_id !== null
-          ? String(movement.produto_id)
-          : null;
+        const productId =
+          movement.produto_id !== undefined && movement.produto_id !== null
+            ? String(movement.produto_id)
+            : null;
         return {
           id: String(movement.id ?? `${Date.now()}`),
           produto: movement.produto_nome ?? "Produto",
@@ -230,7 +266,9 @@ export default function ListEstoque({
               ? movement.tipo
               : "ajuste",
           quantidade: Number(movement.quantidade ?? 0),
-          unidade: movement.produto_unidade ?? (productId ? unitsByProductId[productId] ?? "un" : "un"),
+          unidade:
+            movement.produto_unidade ??
+            (productId ? unitsByProductId[productId] ?? "un" : "un"),
           data: formatMovementDate(movement.criado_em),
           responsavel: movement.criado_por ?? "Movimentação",
           motivo:
@@ -240,10 +278,7 @@ export default function ListEstoque({
         } as Movimentacao;
       })
       .slice(0, 12);
-
-    setMovements(mapped);
-    setMovementsLoading(false);
-  }, [unitsByProductId]);
+  }, [movementDateRange.endDate, movementDateRange.startDate, movements, unitsByProductId]);
 
   useEffect(() => {
     void loadMovements();
@@ -395,6 +430,7 @@ export default function ListEstoque({
           </View>
         </View>
         <View className="mt-4">
+          <DateFilter value={movementDateRange} onChange={setMovementDateRange} />
           {movementsLoading ? (
             <View className="items-center rounded-2xl bg-background-secondary px-4 py-5">
               <ActivityIndicator color="#2563EB" />
@@ -408,12 +444,12 @@ export default function ListEstoque({
                 {movementsError}
               </Text>
             </View>
-          ) : movements.length ? (
-            <MovimentacaoEstoque data={movements} />
+          ) : filteredMovements.length ? (
+            <MovimentacaoEstoque data={filteredMovements} />
           ) : (
             <View className="rounded-2xl bg-background-secondary px-4 py-3">
               <Text className="text-xs text-text-tertiary">
-                Nenhuma movimentação de estoque encontrada.
+                Nenhuma movimentação nesse período.
               </Text>
             </View>
           )}
