@@ -1,4 +1,4 @@
-import { DB } from "../../../database/conn.js";
+import { DB } from "../../database/conn.js";
 
 type FinanceMovementPayload = {
   title?: string | null;

@@ -1,4 +1,4 @@
-import { DB } from "../../../database/conn.js";
+import { DB } from "../../database/conn.js";
 import { type clientsTypes } from "../../types/Clients/ClientsTypes.js";
 
 export class ClientsService {

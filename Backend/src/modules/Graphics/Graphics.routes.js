@@ -1,0 +1,13 @@
+import { Router } from "express";
+import { GraphicsController } from "./Grphics.controller.js";
+const router = Router();
+const controller = new GraphicsController();
+router.get("/graphics/painel", controller.getVendasMensais.bind(controller));
+router.get("/graphics/cards", controller.getValuesCards.bind(controller));
+router.get("/graphics/custo-x-lucro", controller.getCustoXLucro.bind(controller));
+router.get("/graphics/status-os", controller.getStatusOS.bind(controller));
+router.get("/graphics/servicos-por-categoria", controller.getServicosPorCategoria.bind(controller));
+router.get("/graphics/estoque-critico", controller.getEstoqueCritico.bind(controller));
+router.get("/graphics/ranking-produtos", controller.getRankingProdutos.bind(controller));
+export const graphicRoutes = router;
+//# sourceMappingURL=Graphics.routes.js.map

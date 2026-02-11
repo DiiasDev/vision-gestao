@@ -9,7 +9,12 @@ export class GraphicsController {
     const endRaw = req.query.endDate;
     const startDate = typeof startRaw === "string" ? startRaw : undefined;
     const endDate = typeof endRaw === "string" ? endRaw : undefined;
-    return { startDate, endDate };
+
+    const range: { startDate?: string; endDate?: string } = {};
+    if (startDate) range.startDate = startDate;
+    if (endDate) range.endDate = endDate;
+
+    return range;
   }
 
   public async getVendasMensais(req: Request, res: Response) {

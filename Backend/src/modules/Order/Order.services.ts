@@ -1,4 +1,4 @@
-import { DB } from "../../../database/conn.js";
+import { DB } from "../../database/conn.js";
 import {
   type OrderPayload,
   type OrderItemPayload,
@@ -80,6 +80,30 @@ const buildItemPayload = (item: OrderItemPayload) => {
     price,
     total: quantity * price,
   };
+};
+
+const getApiErrorMessage = (value: unknown) => {
+  if (!value || typeof value !== "object") return null;
+  const error = (value as { error?: unknown }).error;
+  if (!error || typeof error !== "object") return null;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === "string" ? message : null;
+};
+
+const getMediaId = (value: unknown) => {
+  if (!value || typeof value !== "object") return null;
+  const id = (value as { id?: unknown }).id;
+  return typeof id === "string" ? id : null;
+};
+
+const getFirstMessageId = (value: unknown) => {
+  if (!value || typeof value !== "object") return null;
+  const messages = (value as { messages?: unknown }).messages;
+  if (!Array.isArray(messages) || messages.length === 0) return null;
+  const first = messages[0];
+  if (!first || typeof first !== "object") return null;
+  const id = (first as { id?: unknown }).id;
+  return typeof id === "string" ? id : null;
 };
 
 export class OrderService {
@@ -622,11 +646,19 @@ export class OrderService {
         },
       );
 
-      const mediaData = await mediaResponse.json();
+      const mediaData: unknown = await mediaResponse.json();
       if (!mediaResponse.ok) {
         return {
           success: false,
-          message: mediaData?.error?.message ?? "Falha ao enviar mídia",
+          message: getApiErrorMessage(mediaData) ?? "Falha ao enviar mídia",
+        };
+      }
+
+      const mediaId = getMediaId(mediaData);
+      if (!mediaId) {
+        return {
+          success: false,
+          message: "Falha ao enviar mídia",
         };
       }
 
@@ -643,25 +675,25 @@ export class OrderService {
             to: phone,
             type: "document",
             document: {
-              id: mediaData.id,
+              id: mediaId,
               filename: `orcamento-${order.id}.pdf`,
             },
           }),
         },
       );
 
-      const sendData = await sendResponse.json();
+      const sendData: unknown = await sendResponse.json();
       if (!sendResponse.ok) {
         return {
           success: false,
-          message: sendData?.error?.message ?? "Falha ao enviar documento",
+          message: getApiErrorMessage(sendData) ?? "Falha ao enviar documento",
         };
       }
 
       return {
         success: true,
         message: "Orçamento enviado no WhatsApp",
-        message_id: sendData?.messages?.[0]?.id ?? null,
+        message_id: getFirstMessageId(sendData),
       };
     } catch (error: any) {
       console.error("Erro ao exportar orçamento:", error);

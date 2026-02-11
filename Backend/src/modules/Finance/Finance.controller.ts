@@ -54,7 +54,14 @@ export class FinanceController {
 
   public async updateMovement(req: Request, res: Response) {
     try {
-      const { id } = req.params ?? {};
+      const id = typeof req.params?.id === "string" ? req.params.id : "";
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Id da movimentação é obrigatório",
+        });
+      }
+
       const payload = req.body ?? {};
       const result = await this.finance.updateMovement(id, payload);
       const statusCode = result.success ? 200 : 400;
@@ -70,7 +77,14 @@ export class FinanceController {
 
   public async deleteMovement(req: Request, res: Response) {
     try {
-      const { id } = req.params ?? {};
+      const id = typeof req.params?.id === "string" ? req.params.id : "";
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Id da movimentação é obrigatório",
+        });
+      }
+
       const result = await this.finance.deleteMovement(id);
       const statusCode = result.success ? 200 : 400;
       return res.status(statusCode).json(result);

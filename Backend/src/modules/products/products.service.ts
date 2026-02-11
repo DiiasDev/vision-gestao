@@ -1,4 +1,4 @@
-import { DB } from "../../../database/conn.js";
+import { DB } from "../../database/conn.js";
 import { type ProductsTypes } from "../../types/Products/Products.types.js";
 import fs from "node:fs";
 import path from "node:path";
