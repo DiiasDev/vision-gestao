@@ -98,15 +98,18 @@ export function RankingProducts({ dateRange, onInfoPress }: RankingProductsProps
 
   return (
     <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
-          <Text className="text-base font-semibold text-text-primary">
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1 flex-row items-center gap-2 pr-2">
+          <Text
+            className="flex-1 text-base font-semibold text-text-primary"
+            numberOfLines={2}
+          >
             Produtos mais vendidos
           </Text>
           {onInfoPress ? (
             <Pressable
               onPress={onInfoPress}
-              className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+              className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-background-secondary"
               accessibilityRole="button"
               accessibilityLabel="Informacoes sobre ranking de produtos"
             >
@@ -114,7 +117,11 @@ export function RankingProducts({ dateRange, onInfoPress }: RankingProductsProps
             </Pressable>
           ) : null}
         </View>
-        <Text className="text-xs text-text-tertiary">{totalSaidas} un.</Text>
+        <View className="w-[32%] shrink-0 items-end">
+          <Text className="text-right text-xs text-text-tertiary">
+            {totalSaidas} un.
+          </Text>
+        </View>
       </View>
 
       <View className="mt-4 flex-row rounded-xl bg-background-secondary p-1">

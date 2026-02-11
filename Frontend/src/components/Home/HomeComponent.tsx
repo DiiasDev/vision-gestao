@@ -183,21 +183,26 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           />
 
           <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-base font-semibold text-text-primary">
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-1 flex-row items-center gap-2 pr-2">
+                <Text
+                  className="flex-1 text-base font-semibold text-text-primary"
+                  numberOfLines={2}
+                >
                   Movimentações recentes
                 </Text>
                 <Pressable
                   onPress={() => openInfo("movimentacoes_recentes")}
-                  className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+                  className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-background-secondary"
                   accessibilityRole="button"
                   accessibilityLabel="Informacoes sobre movimentacoes recentes"
                 >
                   <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
                 </Pressable>
               </View>
-              <Text className="text-xs text-text-tertiary">Hoje</Text>
+              <View className="w-[24%] shrink-0 items-end">
+                <Text className="text-right text-xs text-text-tertiary">Hoje</Text>
+              </View>
             </View>
           <View className="mt-4 gap-3">
             {loadingMovements ? (
