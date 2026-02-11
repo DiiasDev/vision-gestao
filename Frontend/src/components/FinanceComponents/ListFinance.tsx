@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import type { FinanceFilter } from "../../../../Backend/src/types/Finance/FinanceTypes.types";
 import {
@@ -359,9 +360,12 @@ export default function ListFinance() {
             }}
             className="flex-1 rounded-2xl bg-state-error/10 px-4 py-3 border border-state-error/20"
           >
-            <Text className="text-xs uppercase tracking-widest text-state-error">
-              Registrar Despesa
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="arrow-down-circle-outline" size={16} color="#DC2626" />
+              <Text className="text-xs uppercase tracking-widest text-state-error">
+                Registrar Despesa
+              </Text>
+            </View>
             <Text className="mt-1 text-base font-semibold text-state-error">
               Saída rápida
             </Text>
@@ -374,9 +378,12 @@ export default function ListFinance() {
             }}
             className="flex-1 rounded-2xl bg-state-success/10 px-4 py-3 border border-state-success/20"
           >
-            <Text className="text-xs uppercase tracking-widest text-state-success">
-              Registrar Ganho
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="arrow-up-circle-outline" size={16} color="#16A34A" />
+              <Text className="text-xs uppercase tracking-widest text-state-success">
+                Registrar Ganho
+              </Text>
+            </View>
             <Text className="mt-1 text-base font-semibold text-state-success">
               Entrada imediata
             </Text>
