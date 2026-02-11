@@ -7,6 +7,7 @@ import {
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ProductsService } from "../products/products.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,6 +78,27 @@ const buildItemPayload = (item: ServiceRealizedItem) => {
     cost,
     total_cost: quantity * cost,
   };
+};
+
+const sumQuantityByProduct = (
+  items: Array<{
+    product_id?: string | number | null;
+    quantity?: number | string | null;
+  }>,
+) => {
+  return items.reduce(
+    (acc, item) => {
+      const productId =
+        item.product_id !== undefined && item.product_id !== null
+          ? String(item.product_id)
+          : null;
+      const quantity = normalizeNumber(item.quantity);
+      if (!productId || quantity <= 0) return acc;
+      acc[productId] = (acc[productId] ?? 0) + quantity;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 };
 
 export class ServicesService {
@@ -209,7 +231,7 @@ export class ServicesService {
 
       const result = await pool.query(
         "DELETE FROM servicos WHERE id = $1 RETURNING *",
-        [id]
+        [id],
       );
 
       return {
@@ -261,7 +283,10 @@ export class ServicesService {
       const valueTotal = valueService + valueProducts;
 
       const costService = normalizeNumber(payload.cost);
-      const costProducts = items.reduce((acc, item) => acc + item.total_cost, 0);
+      const costProducts = items.reduce(
+        (acc, item) => acc + item.total_cost,
+        0,
+      );
       const costTotal = costService + costProducts;
       const status = normalizeText(payload.status) ?? "concluido";
 
@@ -343,10 +368,39 @@ export class ServicesService {
         }
       }
 
+      if (items.length) {
+        const productsService = new ProductsService();
+        const stockMovement = await productsService.movimentEstoque({
+          items: items.map((item) => ({
+            product_id: item.product_id ?? null,
+            product_name: item.product_name ?? null,
+            quantity: item.quantity,
+            description:
+              normalizeText(payload.notes) ??
+              `Baixa de estoque do serviço ${normalizeText(payload.service_name) ?? "realizado"}`,
+          })),
+          movementType: "saida",
+          transactionClient: pool,
+          origin: "servico",
+          referenceId: realized.id,
+          createdBy: normalizeText(payload.client_name) ?? "Serviço realizado",
+        });
+
+        if (!stockMovement?.success) {
+          await pool.query("ROLLBACK");
+          return {
+            success: false,
+            message:
+              stockMovement?.message ??
+              "Erro ao movimentar estoque para o serviço realizado",
+          };
+        }
+      }
+
       if (status === "concluido") {
         const alreadyBilled = await pool.query(
           "SELECT id FROM finance_movements WHERE service_realized_id = $1 LIMIT 1",
-          [realized.id]
+          [realized.id],
         );
 
         if (!alreadyBilled.rows.length) {
@@ -405,7 +459,10 @@ export class ServicesService {
     }
   }
 
-  public async updateServiceRealized(id: string, payload: ServiceRealizedPayload) {
+  public async updateServiceRealized(
+    id: string,
+    payload: ServiceRealizedPayload,
+  ) {
     const pool = DB.connect();
     try {
       if (!id) {
@@ -424,11 +481,25 @@ export class ServicesService {
       const valueTotal = valueService + valueProducts;
 
       const costService = normalizeNumber(payload.cost);
-      const costProducts = items.reduce((acc, item) => acc + item.total_cost, 0);
+      const costProducts = items.reduce(
+        (acc, item) => acc + item.total_cost,
+        0,
+      );
       const costTotal = costService + costProducts;
       const status = normalizeText(payload.status) ?? "concluido";
 
       await pool.query("BEGIN");
+
+      const previousItemsResult = await pool.query(
+        `SELECT produto_id, quantidade
+         FROM servicos_realizados_itens
+         WHERE servico_realizado_id = $1`,
+        [id],
+      );
+      const previousItems = (previousItemsResult.rows ?? []).map((item) => ({
+        product_id: item.produto_id,
+        quantity: item.quantidade,
+      }));
 
       const updateService = `
         UPDATE servicos_realizados
@@ -479,7 +550,7 @@ export class ServicesService {
 
       await pool.query(
         "DELETE FROM servicos_realizados_itens WHERE servico_realizado_id = $1",
-        [id]
+        [id],
       );
 
       if (items.length) {
@@ -512,10 +583,100 @@ export class ServicesService {
         }
       }
 
+      const oldByProduct = sumQuantityByProduct(previousItems);
+      const newByProduct = sumQuantityByProduct(
+        items.map((item) => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+        })),
+      );
+
+      const allProductIds = new Set<string>([
+        ...Object.keys(oldByProduct),
+        ...Object.keys(newByProduct),
+      ]);
+
+      const outputAdjustments: Array<{ product_id: string; quantity: number }> = [];
+      const inputAdjustments: Array<{ product_id: string; quantity: number }> = [];
+
+      for (const productId of allProductIds) {
+        const oldQuantity = oldByProduct[productId] ?? 0;
+        const newQuantity = newByProduct[productId] ?? 0;
+        const delta = newQuantity - oldQuantity;
+
+        if (delta > 0) {
+          outputAdjustments.push({
+            product_id: productId,
+            quantity: delta,
+          });
+        } else if (delta < 0) {
+          inputAdjustments.push({
+            product_id: productId,
+            quantity: Math.abs(delta),
+          });
+        }
+      }
+
+      if (outputAdjustments.length || inputAdjustments.length) {
+        const productsService = new ProductsService();
+
+        if (outputAdjustments.length) {
+          const outputResult = await productsService.movimentEstoque({
+            items: outputAdjustments.map((item) => ({
+              ...item,
+              description:
+                normalizeText(payload.notes) ??
+                "Ajuste de saída por edição de serviço realizado",
+            })),
+            movementType: "saida",
+            transactionClient: pool,
+            origin: "servico",
+            referenceId: realized.id,
+            createdBy: normalizeText(payload.client_name) ?? "Serviço realizado",
+          });
+
+          if (!outputResult?.success) {
+            await pool.query("ROLLBACK");
+            return {
+              success: false,
+              message:
+                outputResult?.message ??
+                "Erro ao ajustar saída de estoque na edição do serviço",
+            };
+          }
+        }
+
+        if (inputAdjustments.length) {
+          const inputResult = await productsService.movimentEstoque({
+            items: inputAdjustments.map((item) => ({
+              ...item,
+              description:
+                normalizeText(payload.notes) ??
+                "Ajuste de entrada por edição de serviço realizado",
+            })),
+            movementType: "entrada",
+            transactionClient: pool,
+            origin: "servico",
+            referenceId: realized.id,
+            createdBy: normalizeText(payload.client_name) ?? "Serviço realizado",
+          });
+
+          if (!inputResult?.success) {
+            await pool.query("ROLLBACK");
+            return {
+              success: false,
+              message:
+                inputResult?.message ??
+                "Erro ao ajustar entrada de estoque na edição do serviço",
+            };
+          }
+        }
+      }
+
       if (status === "concluido") {
         const alreadyBilled = await pool.query(
           "SELECT id FROM finance_movements WHERE service_realized_id = $1 LIMIT 1",
-          [realized.id]
+          [realized.id],
         );
 
         if (!alreadyBilled.rows.length) {
@@ -588,17 +749,17 @@ export class ServicesService {
 
       await pool.query(
         "DELETE FROM servicos_realizados_itens WHERE servico_realizado_id = $1",
-        [id]
+        [id],
       );
 
       await pool.query(
         "DELETE FROM finance_movements WHERE service_realized_id = $1",
-        [id]
+        [id],
       );
 
       const result = await pool.query(
         "DELETE FROM servicos_realizados WHERE id = $1 RETURNING *",
-        [id]
+        [id],
       );
 
       await pool.query("COMMIT");
@@ -625,7 +786,7 @@ export class ServicesService {
     try {
       const pool = DB.connect();
       const servicesResult = await pool.query(
-        `SELECT * FROM servicos_realizados ORDER BY criado_em DESC`
+        `SELECT * FROM servicos_realizados ORDER BY criado_em DESC`,
       );
       const services = servicesResult.rows ?? [];
 
@@ -640,16 +801,19 @@ export class ServicesService {
       const ids = services.map((service) => service.id);
       const itemsResult = await pool.query(
         `SELECT * FROM servicos_realizados_itens WHERE servico_realizado_id = ANY($1::uuid[])`,
-        [ids]
+        [ids],
       );
       const items = itemsResult.rows ?? [];
 
-      const itemsByService = items.reduce((acc, item) => {
-        const key = item.servico_realizado_id;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(item);
-        return acc;
-      }, {} as Record<string, typeof items>);
+      const itemsByService = items.reduce(
+        (acc, item) => {
+          const key = item.servico_realizado_id;
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(item);
+          return acc;
+        },
+        {} as Record<string, typeof items>,
+      );
 
       const enriched = services.map((service) => ({
         ...service,
@@ -677,7 +841,7 @@ export class ServicesService {
       channel?: string | null;
       date?: string | null;
       notes?: string | null;
-    }
+    },
   ) {
     const pool = DB.connect();
     try {
@@ -692,7 +856,7 @@ export class ServicesService {
 
       const serviceResult = await pool.query(
         "SELECT * FROM servicos_realizados WHERE id = $1 FOR UPDATE",
-        [id]
+        [id],
       );
       const service = serviceResult.rows[0];
 
@@ -706,7 +870,7 @@ export class ServicesService {
 
       const alreadyBilled = await pool.query(
         "SELECT id FROM finance_movements WHERE service_realized_id = $1 LIMIT 1",
-        [id]
+        [id],
       );
 
       const totalValue =
@@ -714,7 +878,8 @@ export class ServicesService {
         (normalizeDbNumber(service.valor_servico) ?? 0) +
           (normalizeDbNumber(service.valor_produtos) ?? 0);
 
-      const movementDate = normalizeText(payload?.date) ?? new Date().toISOString();
+      const movementDate =
+        normalizeText(payload?.date) ?? new Date().toISOString();
 
       let createdMovement = null;
 
@@ -759,7 +924,7 @@ export class ServicesService {
          SET status = $1, atualizado_em = NOW()
          WHERE id = $2
          RETURNING *`,
-        ["concluido", id]
+        ["concluido", id],
       );
 
       await pool.query("COMMIT");

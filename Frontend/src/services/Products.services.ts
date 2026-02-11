@@ -17,6 +17,23 @@ export type ProductPayload = {
 
 export type Product = ProductsTypes;
 
+export type StockMovement = {
+  id: string | number;
+  produto_id: number;
+  produto_nome?: string | null;
+  produto_unidade?: string | null;
+  produto_sku?: string | null;
+  tipo: "entrada" | "saida" | "ajuste";
+  quantidade: number;
+  saldo_anterior?: number | null;
+  saldo_atual?: number | null;
+  descricao?: string | null;
+  origem?: "manual" | "servico" | "orcamento" | "ajuste_sistema" | string | null;
+  referencia_id?: string | null;
+  criado_por?: string | null;
+  criado_em?: string | null;
+};
+
 const toNumberOrNull = (value: number | string | undefined) => {
   if (value === undefined || value === null || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
@@ -230,6 +247,108 @@ export class ProductsService {
       return {
         success: false,
         message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
+  static async moveStock(payload: {
+    product_id?: string | number | null;
+    quantity?: number | string | null;
+    movement_type?: "entrada" | "saida";
+    description?: string | null;
+  }) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${ProductsService.baseUrl}/products/stock/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          product_id: payload.product_id ?? null,
+          quantity:
+            payload.quantity === null
+              ? null
+              : toNumberOrNull(payload.quantity as number | string | undefined),
+          movement_type: payload.movement_type ?? null,
+          description: payload.description ?? null,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao movimentar estoque",
+        };
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error("Erro ao movimentar estoque: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+      };
+    }
+  }
+
+  static async getStockMovements(params?: {
+    product_id?: string | number | null;
+    limit?: number;
+  }) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const query = new URLSearchParams();
+      if (params?.product_id !== undefined && params?.product_id !== null) {
+        query.append("product_id", String(params.product_id));
+      }
+      if (params?.limit) {
+        query.append("limit", String(params.limit));
+      }
+
+      const response = await fetch(
+        `${ProductsService.baseUrl}/products/stock/movements${
+          query.toString() ? `?${query.toString()}` : ""
+        }`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+        },
+      );
+
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar movimentações de estoque",
+          movements: [],
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message ?? "Movimentações de estoque",
+        movements: data?.movements ?? [],
+      };
+    } catch (error: any) {
+      console.error("Erro ao listar movimentações de estoque: ", error);
+      const isAbort = error?.name === "AbortError";
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        movements: [],
       };
     }
   }

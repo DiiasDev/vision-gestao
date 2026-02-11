@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import FormComponent from "../FormComponent/FormComponent";
+import FormEstoque from "./FormEstoque";
 import { fieldsProduct } from "../../Fields/ProductsForm";
 import MovimentacaoEstoque, {
   type Movimentacao,
@@ -19,6 +20,7 @@ import MovimentacaoEstoque, {
 import {
   ProductPayload,
   ProductsService,
+  type StockMovement,
   type Product,
 } from "../../services/Products.services";
 
@@ -26,42 +28,9 @@ type ListEstoqueProps = {
   products: Product[];
   loading?: boolean;
   error?: string | null;
-  onRefresh?: () => void;
+  onRefresh?: () => void | Promise<void>;
   refreshing?: boolean;
 };
-
-const mockMovements: Movimentacao[] = [
-  {
-    id: "mv-101",
-    produto: "Cabo HDMI 2.1",
-    tipo: "saida",
-    quantidade: 3,
-    unidade: "un",
-    data: "Hoje, 14:12",
-    responsavel: "Gabriel (Vendas)",
-    motivo: "Venda balcão • Pedido #8291",
-  },
-  {
-    id: "mv-102",
-    produto: "Tela iPhone 13",
-    tipo: "entrada",
-    quantidade: 5,
-    unidade: "un",
-    data: "Hoje, 10:40",
-    responsavel: "Larissa (Compras)",
-    motivo: "Reposição automática • Fornecedor Prime",
-  },
-  {
-    id: "mv-103",
-    produto: "Película 3D",
-    tipo: "ajuste",
-    quantidade: 2,
-    unidade: "un",
-    data: "Ontem, 19:08",
-    responsavel: "Estoque",
-    motivo: "Ajuste após inventário rápido",
-  },
-];
 
 const parseNumber = (value: unknown) => {
   if (value === undefined || value === null || value === "") return null;
@@ -113,6 +82,52 @@ const getImageUri = (imagem?: string | null) => {
   return looksLikeBase64 ? `data:image/jpeg;base64,${trimmed}` : null;
 };
 
+const toTimestamp = (value?: string | null) => {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+const formatMovementDate = (value?: string | null) => {
+  if (!value) return "Data n/d";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data n/d";
+  try {
+    return new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+  } catch {
+    return value;
+  }
+};
+
+const getAutomaticMovementMessage = (movement: StockMovement) => {
+  if (movement.origem === "manual") {
+    return movement.tipo === "entrada"
+      ? "Entrada via formulário rápido"
+      : movement.tipo === "saida"
+        ? "Saída via formulário rápido"
+        : "Ajuste manual via formulário rápido";
+  }
+
+  if (movement.origem === "servico") {
+    return movement.tipo === "entrada"
+      ? "Ajuste de entrada por edição de serviço realizado"
+      : "Saída vinculada ao serviço realizado";
+  }
+
+  if (movement.origem === "orcamento") {
+    return "Saída na conversão de orçamento";
+  }
+
+  return movement.tipo === "entrada"
+    ? "Entrada de estoque"
+    : movement.tipo === "saida"
+      ? "Saída de estoque"
+      : "Ajuste de estoque";
+};
+
 export default function ListEstoque({
   products,
   loading,
@@ -123,6 +138,13 @@ export default function ListEstoque({
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "compact">("cards");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [stockFormType, setStockFormType] = useState<"entrada" | "saida" | null>(
+    null,
+  );
+  const [movements, setMovements] = useState<Movimentacao[]>([]);
+  const [movementsLoading, setMovementsLoading] = useState(false);
+  const [movementsRefreshing, setMovementsRefreshing] = useState(false);
+  const [movementsError, setMovementsError] = useState<string | null>(null);
   const [actionAlert, setActionAlert] = useState<{
     type: "success" | "error";
     message: string;
@@ -163,6 +185,78 @@ export default function ListEstoque({
     const stock = parseNumber(product.estoque) ?? 0;
     return acc + stock;
   }, 0);
+
+  const unitsByProductId = useMemo(
+    () =>
+      safeProducts.reduce(
+        (acc, product) => {
+          if (product.id !== undefined && product.id !== null) {
+            acc[String(product.id)] = product.unidade ?? "un";
+          }
+          return acc;
+        },
+        {} as Record<string, string>,
+      ),
+    [safeProducts],
+  );
+
+  const loadMovements = useCallback(async () => {
+    setMovementsLoading(true);
+    setMovementsError(null);
+
+    const result = await ProductsService.getStockMovements({ limit: 20 });
+    if (!result?.success) {
+      setMovements([]);
+      setMovementsError(result?.message ?? "Falha ao carregar movimentações");
+      setMovementsLoading(false);
+      return;
+    }
+
+    const rawMovements: StockMovement[] = Array.isArray(result.movements)
+      ? result.movements
+      : [];
+
+    const mapped = rawMovements
+      .sort((a, b) => toTimestamp(b.criado_em) - toTimestamp(a.criado_em))
+      .map((movement) => {
+        const productId = movement.produto_id !== undefined && movement.produto_id !== null
+          ? String(movement.produto_id)
+          : null;
+        return {
+          id: String(movement.id ?? `${Date.now()}`),
+          produto: movement.produto_nome ?? "Produto",
+          tipo:
+            movement.tipo === "entrada" || movement.tipo === "saida"
+              ? movement.tipo
+              : "ajuste",
+          quantidade: Number(movement.quantidade ?? 0),
+          unidade: movement.produto_unidade ?? (productId ? unitsByProductId[productId] ?? "un" : "un"),
+          data: formatMovementDate(movement.criado_em),
+          responsavel: movement.criado_por ?? "Movimentação",
+          motivo:
+            typeof movement.descricao === "string" && movement.descricao.trim()
+              ? movement.descricao.trim()
+              : getAutomaticMovementMessage(movement),
+        } as Movimentacao;
+      })
+      .slice(0, 12);
+
+    setMovements(mapped);
+    setMovementsLoading(false);
+  }, [unitsByProductId]);
+
+  useEffect(() => {
+    void loadMovements();
+  }, [loadMovements]);
+
+  const handleRefresh = async () => {
+    setMovementsRefreshing(true);
+    try {
+      await Promise.all([Promise.resolve(onRefresh?.()), loadMovements()]);
+    } finally {
+      setMovementsRefreshing(false);
+    }
+  };
 
   const listHeader = (
     <View className="pb-6">
@@ -236,6 +330,27 @@ export default function ListEstoque({
         </Pressable>
       </View>
 
+      <View className="mt-4 flex-row gap-3">
+        <Pressable
+          onPress={() => setStockFormType("entrada")}
+          className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"
+        >
+          <Ionicons name="arrow-down-circle-outline" size={16} color="#059669" />
+          <Text className="text-sm font-semibold text-emerald-700">
+            Entrada de estoque
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setStockFormType("saida")}
+          className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
+        >
+          <Ionicons name="arrow-up-circle-outline" size={16} color="#DC2626" />
+          <Text className="text-sm font-semibold text-rose-700">
+            Saída de estoque
+          </Text>
+        </Pressable>
+      </View>
+
       {error ? (
         <View className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
           <Text className="text-sm font-semibold text-rose-700">
@@ -272,7 +387,7 @@ export default function ListEstoque({
               Movimentações recentes
             </Text>
             <Text className="mt-1 text-xs text-text-tertiary">
-              Dados mockados das últimas 24 horas
+              Entradas, saídas e ajustes registrados no estoque
             </Text>
           </View>
           <View className="h-10 w-10 items-center justify-center rounded-xl bg-background-secondary">
@@ -280,7 +395,28 @@ export default function ListEstoque({
           </View>
         </View>
         <View className="mt-4">
-          <MovimentacaoEstoque data={mockMovements} />
+          {movementsLoading ? (
+            <View className="items-center rounded-2xl bg-background-secondary px-4 py-5">
+              <ActivityIndicator color="#2563EB" />
+              <Text className="mt-2 text-xs text-text-tertiary">
+                Carregando movimentações...
+              </Text>
+            </View>
+          ) : movementsError ? (
+            <View className="rounded-2xl bg-rose-50 px-4 py-3">
+              <Text className="text-xs font-semibold text-rose-700">
+                {movementsError}
+              </Text>
+            </View>
+          ) : movements.length ? (
+            <MovimentacaoEstoque data={movements} />
+          ) : (
+            <View className="rounded-2xl bg-background-secondary px-4 py-3">
+              <Text className="text-xs text-text-tertiary">
+                Nenhuma movimentação de estoque encontrada.
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -520,8 +656,8 @@ export default function ListEstoque({
         ListHeaderComponent={listHeader}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
-        onRefresh={onRefresh}
-        refreshing={Boolean(refreshing)}
+        onRefresh={handleRefresh}
+        refreshing={Boolean(refreshing) || movementsRefreshing}
         ListEmptyComponent={
           <View className="rounded-[26px] border border-divider bg-card-background p-6">
             <View className="h-12 w-12 items-center justify-center rounded-2xl bg-background-secondary">
@@ -536,6 +672,23 @@ export default function ListEstoque({
           </View>
         }
       />
+
+      <Modal
+        visible={!!stockFormType}
+        animationType="slide"
+        onRequestClose={() => setStockFormType(null)}
+      >
+        <View className="flex-1 bg-background-primary">
+          {stockFormType ? (
+            <FormEstoque
+              products={safeProducts}
+              movementType={stockFormType}
+              onBack={() => setStockFormType(null)}
+              onSuccess={handleRefresh}
+            />
+          ) : null}
+        </View>
+      </Modal>
 
       <Modal
         visible={!!editingProduct}

@@ -1,6 +1,10 @@
 import { DB } from "../../../database/conn.js";
-import { type OrderPayload, type OrderItemPayload } from "../../types/Order/Order.types.js";
+import {
+  type OrderPayload,
+  type OrderItemPayload,
+} from "../../types/Order/Order.types.js";
 import PDFDocument from "pdfkit";
+import { ProductsService } from "../products/products.service.js";
 
 const normalizeNumber = (value: unknown) => {
   if (value === undefined || value === null || value === "") return 0;
@@ -53,9 +57,11 @@ const generateOrderPdf = async (order: any, items: any[]) => {
   doc.moveDown(0.5);
   doc.fontSize(12).text("Itens");
   items.forEach((item) => {
-    doc.fontSize(10).text(
-      `${item.produto_nome ?? "Produto"} - Qtd: ${item.quantidade ?? 0} - R$ ${item.preco_unitario ?? 0} - Total: R$ ${item.total_item ?? 0}`
-    );
+    doc
+      .fontSize(10)
+      .text(
+        `${item.produto_nome ?? "Produto"} - Qtd: ${item.quantidade ?? 0} - R$ ${item.preco_unitario ?? 0} - Total: R$ ${item.total_item ?? 0}`,
+      );
   });
 
   doc.end();
@@ -87,7 +93,8 @@ export class OrderService {
       const serviceValue = normalizeNumber(payload.service_value);
       const calculatedTotal = serviceValue + itemsTotal;
       const estimatedValue =
-        payload.estimated_value !== null && payload.estimated_value !== undefined
+        payload.estimated_value !== null &&
+        payload.estimated_value !== undefined
           ? normalizeNumber(payload.estimated_value)
           : calculatedTotal;
 
@@ -98,7 +105,7 @@ export class OrderService {
         try {
           const serviceResult = await pool.query(
             "SELECT nome_servico FROM servicos WHERE id = $1",
-            [payload.service_id]
+            [payload.service_id],
           );
           serviceDescription = serviceResult.rows[0]?.nome_servico ?? null;
         } catch (error) {
@@ -194,7 +201,7 @@ export class OrderService {
     try {
       const pool = DB.connect();
       const ordersResult = await pool.query(
-        "SELECT * FROM orcamentos ORDER BY criado_em DESC"
+        "SELECT * FROM orcamentos ORDER BY criado_em DESC",
       );
       const orders = ordersResult.rows ?? [];
 
@@ -209,16 +216,19 @@ export class OrderService {
       const ids = orders.map((order) => order.id);
       const itemsResult = await pool.query(
         "SELECT * FROM orcamentos_itens WHERE orcamento_id = ANY($1::uuid[])",
-        [ids]
+        [ids],
       );
       const items = itemsResult.rows ?? [];
 
-      const itemsByOrder = items.reduce((acc, item) => {
-        const key = item.orcamento_id;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(item);
-        return acc;
-      }, {} as Record<string, typeof items>);
+      const itemsByOrder = items.reduce(
+        (acc, item) => {
+          const key = item.orcamento_id;
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(item);
+          return acc;
+        },
+        {} as Record<string, typeof items>,
+      );
 
       const enriched = orders.map((order) => ({
         ...order,
@@ -257,7 +267,8 @@ export class OrderService {
       const serviceValue = normalizeNumber(payload.service_value);
       const calculatedTotal = serviceValue + itemsTotal;
       const estimatedValue =
-        payload.estimated_value !== null && payload.estimated_value !== undefined
+        payload.estimated_value !== null &&
+        payload.estimated_value !== undefined
           ? normalizeNumber(payload.estimated_value)
           : calculatedTotal;
 
@@ -268,7 +279,7 @@ export class OrderService {
         try {
           const serviceResult = await pool.query(
             "SELECT nome_servico FROM servicos WHERE id = $1",
-            [payload.service_id]
+            [payload.service_id],
           );
           updateServiceDescription =
             serviceResult.rows[0]?.nome_servico ?? null;
@@ -378,7 +389,7 @@ export class OrderService {
 
       const result = await pool.query(
         "DELETE FROM orcamentos WHERE id = $1 RETURNING *",
-        [id]
+        [id],
       );
 
       return {
@@ -409,7 +420,7 @@ export class OrderService {
 
       const orderResult = await pool.query(
         "SELECT * FROM orcamentos WHERE id = $1",
-        [id]
+        [id],
       );
       const order = orderResult.rows[0];
       if (!order) {
@@ -422,7 +433,7 @@ export class OrderService {
 
       const itemsResult = await pool.query(
         "SELECT * FROM orcamentos_itens WHERE orcamento_id = $1",
-        [id]
+        [id],
       );
       const items = itemsResult.rows ?? [];
 
@@ -502,9 +513,38 @@ export class OrderService {
         }
       }
 
+      if (items.length) {
+        const productsService = new ProductsService();
+        const stockMovement = await productsService.movimentEstoque({
+          items: items.map((item) => ({
+            product_id: item.produto_id ?? null,
+            product_name: item.produto_nome ?? null,
+            quantity: item.quantidade ?? 0,
+            description:
+              normalizeText(order.observacoes) ??
+              `Baixa de estoque na conversão do orçamento ${order.id}`,
+          })),
+          movementType: "saida",
+          transactionClient: pool,
+          origin: "orcamento",
+          referenceId: id,
+          createdBy: normalizeText(order.cliente_nome) ?? "Conversão de orçamento",
+        });
+
+        if (!stockMovement?.success) {
+          await pool.query("ROLLBACK");
+          return {
+            success: false,
+            message:
+              stockMovement?.message ??
+              "Erro ao movimentar estoque na conversão do orçamento",
+          };
+        }
+      }
+
       await pool.query(
         "UPDATE orcamentos SET status = $1, atualizado_em = NOW() WHERE id = $2",
-        ["convertido", id]
+        ["convertido", id],
       );
 
       await pool.query("COMMIT");
@@ -540,7 +580,7 @@ export class OrderService {
 
       const orderResult = await pool.query(
         "SELECT * FROM orcamentos WHERE id = $1",
-        [id]
+        [id],
       );
       const order = orderResult.rows[0];
       if (!order) {
@@ -549,7 +589,7 @@ export class OrderService {
 
       const itemsResult = await pool.query(
         "SELECT * FROM orcamentos_itens WHERE orcamento_id = $1",
-        [id]
+        [id],
       );
       const items = itemsResult.rows ?? [];
 
@@ -567,7 +607,7 @@ export class OrderService {
       form.append(
         "file",
         new Blob([new Uint8Array(pdfBuffer)], { type: "application/pdf" }),
-        `orcamento-${order.id}.pdf`
+        `orcamento-${order.id}.pdf`,
       );
       form.append("type", "application/pdf");
 
@@ -579,7 +619,7 @@ export class OrderService {
             Authorization: `Bearer ${token}`,
           },
           body: form,
-        }
+        },
       );
 
       const mediaData = await mediaResponse.json();
@@ -607,7 +647,7 @@ export class OrderService {
               filename: `orcamento-${order.id}.pdf`,
             },
           }),
-        }
+        },
       );
 
       const sendData = await sendResponse.json();

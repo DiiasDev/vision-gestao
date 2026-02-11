@@ -97,4 +97,44 @@ export class ProductsController {
       });
     }
   }
+
+  public async moveStock(req: Request, res: Response) {
+    try {
+      const payload = req.body ?? {};
+      const result = await this.product.moveStockByProduct(payload);
+      const statusCode = result.success ? 200 : 400;
+      return res.status(statusCode).json(result);
+    } catch (error: any) {
+      console.log("Erro ao movimentar estoque: ", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao movimentar estoque",
+      });
+    }
+  }
+
+  public async getStockMovements(req: Request, res: Response) {
+    try {
+      const { product_id, limit } = req.query;
+      const rawProductId = Array.isArray(product_id) ? product_id[0] : product_id;
+      const rawLimit = Array.isArray(limit) ? limit[0] : limit;
+
+      const productId = typeof rawProductId === "string" ? rawProductId : null;
+      const safeLimit = typeof rawLimit === "string" ? rawLimit : null;
+
+      const result = await this.product.getStockMovements({
+        product_id: productId,
+        limit: safeLimit,
+      });
+
+      const statusCode = result.success ? 200 : 400;
+      return res.status(statusCode).json(result);
+    } catch (error: any) {
+      console.log("Erro ao listar movimentações de estoque: ", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno ao listar movimentações de estoque",
+      });
+    }
+  }
 }
