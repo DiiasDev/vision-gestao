@@ -119,6 +119,19 @@ export type ServicosPorCategoriaResponse = {
   data: ServicosPorCategoriaData;
 };
 
+export type EstoqueCriticoItem = {
+  id: string | number;
+  nome: string;
+  estoque: number | string | null;
+  unidade?: string | null;
+};
+
+export type EstoqueCriticoResponse = {
+  success: boolean;
+  message?: string;
+  products: EstoqueCriticoItem[];
+};
+
 export class GraphicService {
   static async getVendasMensais(
     months = 6,
@@ -431,6 +444,66 @@ export class GraphicService {
         message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
         data: { total: 0, categorias: [], dias: 30 },
       } as ServicosPorCategoriaResponse;
+    }
+  }
+
+  static async getEstoqueCritico() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(`${getBaseUrl()}/graphics/estoque-critico`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: EstoqueCriticoResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as EstoqueCriticoResponse) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar estoque critico",
+          products: [],
+        } as EstoqueCriticoResponse;
+      }
+
+      const hasValidShape =
+        data &&
+        typeof data.success === "boolean" &&
+        Array.isArray(data.products);
+
+      if (!hasValidShape) {
+        return {
+          success: false,
+          message: "Resposta invalida ao carregar estoque critico",
+          products: [],
+        } as EstoqueCriticoResponse;
+      }
+
+      return {
+        success: data.success,
+        message: data.message,
+        products: data.products,
+      } as EstoqueCriticoResponse;
+    } catch (error: any) {
+      const isAbort = error?.name === "AbortError";
+      if (!isAbort) {
+        console.error("Erro ao carregar estoque critico:", error);
+      }
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        products: [],
+      } as EstoqueCriticoResponse;
     }
   }
 }

@@ -18,10 +18,7 @@ export class GraphicsController {
       const months =
         typeof monthsRaw === "string" ? Number(monthsRaw) : undefined;
       const range = this.getRangeParams(req);
-      const data = await this.GraphicServices.vendasMensais(
-        months ?? 6,
-        range,
-      );
+      const data = await this.GraphicServices.vendasMensais(months ?? 6, range);
 
       return res.status(200).json(data);
     } catch (error: any) {
@@ -85,6 +82,16 @@ export class GraphicsController {
         success: false,
         data: { total: 0, categorias: [], dias: 30 },
       });
+    }
+  }
+
+  public async getEstoqueCritico(req: Request, res: Response) {
+    try {
+      const data = await this.GraphicServices.estoqueCritico();
+      return res.status(200).json(data);
+    } catch (error: any) {
+      console.error("erro ao pegar dados de estoque baixo: ", error);
+      return res.status(500).json("");
     }
   }
 }

@@ -12,5 +12,9 @@ router.get(
   "/graphics/servicos-por-categoria",
   controller.getServicosPorCategoria.bind(controller),
 );
+router.get(
+  "/graphics/estoque-critico",
+  controller.getEstoqueCritico.bind(controller),
+);
 
 export const graphicRoutes = router;

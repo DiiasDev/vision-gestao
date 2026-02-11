@@ -13,6 +13,7 @@ import { CustoXLucro } from "./Graphics/custoXvendas";
 import { ValuesCards } from "./Cards/ValuesCards";
 import { StatusOS } from "./Cards/StatusOS";
 import { ServicosPorCategorias } from "./Graphics/servicosPorCategorias";
+import { EstoqueCritico } from "./Cards/EstoqueCritico";
 import {
   DateFilter,
   DateRangeValue,
@@ -281,55 +282,7 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </Text>
         </View>
 
-          <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-base font-semibold text-text-primary">
-                  Estoque crítico
-                </Text>
-                <Pressable
-                  onPress={() => openInfo("estoque_critico")}
-                  className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
-                  accessibilityRole="button"
-                  accessibilityLabel="Informacoes sobre estoque critico"
-                >
-                  <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
-                </Pressable>
-              </View>
-              <Text className="text-xs text-text-tertiary">Reposição</Text>
-            </View>
-          <View className="mt-4 gap-3">
-            {[
-              { name: "Película 3D", level: 18, max: 100 },
-              { name: "Bateria iPhone 11", level: 9, max: 60 },
-              { name: "Conector Tipo-C", level: 12, max: 80 },
-              { name: "Capas Premium", level: 22, max: 120 },
-            ].map((item) => {
-              const percent = Math.round((item.level / item.max) * 100);
-              return (
-                <View
-                  key={item.name}
-                  className="rounded-2xl bg-background-secondary px-4 py-3"
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-sm text-text-secondary">
-                      {item.name}
-                    </Text>
-                    <Text className="text-sm font-semibold text-text-primary">
-                      {item.level} un.
-                    </Text>
-                  </View>
-                  <View className="mt-2 h-2 rounded-full bg-divider">
-                    <View
-                      className="h-2 rounded-full bg-state-error"
-                      style={{ width: `${percent}%` }}
-                    />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </View>
+          <EstoqueCritico onInfoPress={() => openInfo("estoque_critico")} />
 
           <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
             <View className="flex-row items-center justify-between">

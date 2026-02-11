@@ -1,10 +1,12 @@
 import { ServicesService } from "./../services/Services.services.js";
 import { FinanceService } from "../Finance/Finance.services.js";
+import { ProductsService } from "../products/products.service.js";
 import moment from "moment";
 
 export class GraphicsServices {
   public finance = new FinanceService();
   public services = new ServicesService();
+  public products = new ProductsService();
 
   private resolveRange(startDate?: string, endDate?: string) {
     const start = startDate ? moment(startDate).startOf("day") : null;
@@ -43,7 +45,7 @@ export class GraphicsServices {
         "DD/MM/YYYY",
         "DD/MM/YY",
       ],
-      true
+      true,
     );
     if (parsed.isValid()) return parsed;
     const fallback = moment(trimmed);
@@ -57,10 +59,7 @@ export class GraphicsServices {
     try {
       const safeMonths = Math.max(1, Math.min(Number(monthsCount) || 6, 12));
       const financeData = (await this.finance.listMovements()).movements ?? [];
-      const resolvedRange = this.resolveRange(
-        range?.startDate,
-        range?.endDate,
-      );
+      const resolvedRange = this.resolveRange(range?.startDate, range?.endDate);
       if (resolvedRange) {
         console.log("[vendasMensais] range:", {
           start: resolvedRange.start.format(),
@@ -138,10 +137,17 @@ export class GraphicsServices {
                 data.updated_at,
             );
             if (!parsedDate) return false;
-            return parsedDate.isBetween(filterStart, filterEnd, undefined, "[]");
+            return parsedDate.isBetween(
+              filterStart,
+              filterEnd,
+              undefined,
+              "[]",
+            );
           });
 
-          const entradas = vendasDoMes.filter((data: any) => data.type === "in");
+          const entradas = vendasDoMes.filter(
+            (data: any) => data.type === "in",
+          );
 
           const somaValor = entradas.reduce((acc: number, item: any) => {
             const rawValue = item.value ?? 0;
@@ -182,53 +188,55 @@ export class GraphicsServices {
       } else {
         for (let i = safeMonths - 1; i >= 0; i -= 1) {
           const current = moment().subtract(i, "months");
-        const initialDate = current.clone().startOf("month");
-        const endDate = current.clone().endOf("month");
+          const initialDate = current.clone().startOf("month");
+          const endDate = current.clone().endOf("month");
 
-        const vendasDoMes = financeData.filter((data: any) => {
-          const parsedDate = this.parseDate(
-            data.date ??
-              data.movement_date ??
-              data.created_at ??
-              data.updated_at,
+          const vendasDoMes = financeData.filter((data: any) => {
+            const parsedDate = this.parseDate(
+              data.date ??
+                data.movement_date ??
+                data.created_at ??
+                data.updated_at,
+            );
+            if (!parsedDate) return false;
+            return parsedDate.isBetween(initialDate, endDate, undefined, "[]");
+          });
+
+          const entradas = vendasDoMes.filter(
+            (data: any) => data.type === "in",
           );
-          if (!parsedDate) return false;
-          return parsedDate.isBetween(initialDate, endDate, undefined, "[]");
-        });
 
-        const entradas = vendasDoMes.filter((data: any) => data.type === "in");
+          const somaValor = entradas.reduce((acc: number, item: any) => {
+            const rawValue = item.value ?? 0;
+            const value =
+              typeof rawValue === "number"
+                ? rawValue
+                : Number(String(rawValue ?? 0).replace(",", "."));
+            return acc + (Number.isFinite(value) ? value : 0);
+          }, 0);
 
-        const somaValor = entradas.reduce((acc: number, item: any) => {
-          const rawValue = item.value ?? 0;
-          const value =
-            typeof rawValue === "number"
-              ? rawValue
-              : Number(String(rawValue ?? 0).replace(",", "."));
-          return acc + (Number.isFinite(value) ? value : 0);
-        }, 0);
-
-        const monthIndex = current.month();
-        const label = monthLabels[monthIndex] ?? "";
-        const shortKey = monthKeys[monthIndex] ?? "";
-        const valor = somaValor;
-        const item = {
-          id: current.format("YYYY-MM"),
-          key: shortKey,
-          label,
-          valor,
-          year: current.year(),
-          month: monthIndex + 1,
-        };
-        meses.push(item);
-        if (shortKey) {
-          porMes[shortKey] = {
-            valor,
+          const monthIndex = current.month();
+          const label = monthLabels[monthIndex] ?? "";
+          const shortKey = monthKeys[monthIndex] ?? "";
+          const valor = somaValor;
+          const item = {
+            id: current.format("YYYY-MM"),
+            key: shortKey,
             label,
-            year: item.year,
-            month: item.month,
+            valor,
+            year: current.year(),
+            month: monthIndex + 1,
           };
+          meses.push(item);
+          if (shortKey) {
+            porMes[shortKey] = {
+              valor,
+              label,
+              year: item.year,
+              month: item.month,
+            };
+          }
         }
-      }
       }
 
       return {
@@ -264,10 +272,7 @@ export class GraphicsServices {
         return Number.isFinite(parsed) ? parsed : 0;
       };
 
-      const resolvedRange = this.resolveRange(
-        range?.startDate,
-        range?.endDate,
-      );
+      const resolvedRange = this.resolveRange(range?.startDate, range?.endDate);
       const now = moment();
       const currentStart = resolvedRange
         ? resolvedRange.start.clone()
@@ -282,7 +287,11 @@ export class GraphicsServices {
         .subtract(diffDays - 1, "days")
         .startOf("day");
 
-      const isInRange = (date: any, start: moment.Moment, end: moment.Moment) => {
+      const isInRange = (
+        date: any,
+        start: moment.Moment,
+        end: moment.Moment,
+      ) => {
         const parsedDate = this.parseDate(date);
         if (!parsedDate) return false;
         return parsedDate.isBetween(start, end, undefined, "[]");
@@ -361,10 +370,7 @@ export class GraphicsServices {
   public async custoXlucro(range?: { startDate?: string; endDate?: string }) {
     try {
       const os = (await this.services.getServicesRealized()).services_realized;
-      const resolvedRange = this.resolveRange(
-        range?.startDate,
-        range?.endDate,
-      );
+      const resolvedRange = this.resolveRange(range?.startDate, range?.endDate);
       if (resolvedRange) {
         console.log("[custoXlucro] range:", {
           start: resolvedRange.start.format(),
@@ -521,10 +527,7 @@ export class GraphicsServices {
   public async statusOS(range?: { startDate?: string; endDate?: string }) {
     try {
       const os = (await this.services.getServicesRealized()).services_realized;
-      const resolvedRange = this.resolveRange(
-        range?.startDate,
-        range?.endDate,
-      );
+      const resolvedRange = this.resolveRange(range?.startDate, range?.endDate);
       const osFiltered = resolvedRange
         ? os.filter((item: any) => {
             const rawDate =
@@ -588,13 +591,15 @@ export class GraphicsServices {
     }
   }
 
-  public async servicosPorCategoria(
-    range?: { startDate?: string; endDate?: string },
-  ){
-    try{
+  public async servicosPorCategoria(range?: {
+    startDate?: string;
+    endDate?: string;
+  }) {
+    try {
       const servicesRealized =
         (await this.services.getServicesRealized()).services_realized ?? [];
-      const servicesCatalog = (await this.services.getServices()).servicos ?? [];
+      const servicesCatalog =
+        (await this.services.getServices()).servicos ?? [];
 
       const categoryByServiceId = servicesCatalog.reduce(
         (acc: Record<string, string>, item: any) => {
@@ -607,16 +612,11 @@ export class GraphicsServices {
         {},
       );
 
-      const resolvedRange = this.resolveRange(
-        range?.startDate,
-        range?.endDate,
-      );
+      const resolvedRange = this.resolveRange(range?.startDate, range?.endDate);
       const startDate = resolvedRange
         ? resolvedRange.start
         : moment().subtract(30, "days").startOf("day");
-      const endDate = resolvedRange
-        ? resolvedRange.end
-        : moment().endOf("day");
+      const endDate = resolvedRange ? resolvedRange.end : moment().endOf("day");
 
       const counts = servicesRealized.reduce(
         (acc: Record<string, number>, item: any) => {
@@ -668,16 +668,16 @@ export class GraphicsServices {
 
       const dias = Math.max(endDate.diff(startDate, "days") + 1, 1);
 
-      return{
+      return {
         success: true,
         message: "Dados trazidos com sucesso para servicos por categoria",
         data: {
           total,
           categorias,
           dias,
-        }
-      }
-    }catch(error: any){
+        },
+      };
+    } catch (error: any) {
       console.error("erro ao trazer dados para servicos por categoria:", error);
       return {
         success: false,
@@ -686,8 +686,43 @@ export class GraphicsServices {
           total: 0,
           categorias: [],
           dias: 30,
-        }
+        },
+      };
+    }
+  }
+
+  public async estoqueCritico() {
+    try {
+      const getProdutos = (await this.products.getProducts());
+
+      if(getProdutos.success == false){
+        console.error("erro ao trazer produtos")
+        return
       }
+
+      const produtos = getProdutos.products ?? []
+
+      const estoqueBaixo = produtos?.filter((data: any) => data?.estoque <= 5);
+
+      const data = estoqueBaixo.map((item: any) => ({
+        id: item.id ?? "Item Sem ID",
+        nome: item.nome ?? "Item Sem Nome",
+        estoque: item.estoque ?? "Item Sem Estoque",
+        unidade: item.unidade ?? "Item Sem Unidade De Medida"
+      }))
+
+      return {
+        success: true,
+        message: "Dados trazidos para estoque critico",
+        products: data,
+      };
+    } catch (error: any) {
+      console.error("erro em estoque Critico", error);
+      return {
+        success: false,
+        message: "Erro em estoque Critico",
+        data: {},
+      };
     }
   }
 }
