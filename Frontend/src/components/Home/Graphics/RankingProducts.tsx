@@ -95,6 +95,17 @@ export function RankingProducts({ dateRange, onInfoPress }: RankingProductsProps
     }),
     [theme, themeTokens],
   );
+  const formatRangeLabel = (date: Date) =>
+    date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+  const periodLabel = dateRange
+    ? `${formatRangeLabel(dateRange.startDate)} - ${formatRangeLabel(
+        dateRange.endDate
+      )}`
+    : "Últimos 30 dias";
 
   return (
     <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
@@ -117,8 +128,15 @@ export function RankingProducts({ dateRange, onInfoPress }: RankingProductsProps
             </Pressable>
           ) : null}
         </View>
-        <View className="w-[32%] shrink-0 items-end">
-          <Text className="text-right text-xs text-text-tertiary">
+        <View className="w-[42%] shrink-0 items-end">
+          <Text
+            className="text-right text-xs text-text-tertiary"
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {periodLabel}
+          </Text>
+          <Text className="text-right text-xs text-text-secondary">
             {totalSaidas} un.
           </Text>
         </View>

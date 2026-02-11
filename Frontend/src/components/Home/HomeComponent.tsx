@@ -287,7 +287,10 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </Text>
         </View>
 
-          <EstoqueCritico onInfoPress={() => openInfo("estoque_critico")} />
+          <EstoqueCritico
+            dateRange={dateRange}
+            onInfoPress={() => openInfo("estoque_critico")}
+          />
 
           <RankingProducts
             dateRange={dateRange}

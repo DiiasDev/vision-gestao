@@ -34,6 +34,15 @@
   --state-warning: 245 158 11;
   --state-error: 220 38 38;
   --state-info: 37 99 235;
+
+  /* Calendar */
+  --calendar-surface: 255 255 255;
+  --calendar-border: 229 231 235;
+  --calendar-text-primary: 15 23 42;
+  --calendar-text-secondary: 100 116 139;
+  --calendar-text-disabled: 203 213 225;
+  --calendar-accent: 37 99 235;
+  --calendar-range-fill: 219 234 254;
 }
 
 /* =========================================================
@@ -67,4 +76,13 @@
   --state-warning: 252 196 58;
   --state-error: 255 125 125;
   --state-info: 110 180 255;
+
+  /* Calendar */
+  --calendar-surface: 11 18 32;
+  --calendar-border: 51 65 85;
+  --calendar-text-primary: 226 232 240;
+  --calendar-text-secondary: 148 163 184;
+  --calendar-text-disabled: 71 85 105;
+  --calendar-accent: 96 165 250;
+  --calendar-range-fill: 30 58 138;
 }

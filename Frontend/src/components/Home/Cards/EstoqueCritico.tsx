@@ -7,6 +7,7 @@ import {
 } from "../../../services/Graphic.services";
 
 type EstoqueCriticoProps = {
+  dateRange?: { startDate: Date; endDate: Date };
   onInfoPress?: () => void;
 };
 
@@ -23,10 +24,13 @@ const parseStockNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-export function EstoqueCritico({ onInfoPress }: EstoqueCriticoProps) {
+export function EstoqueCritico({ dateRange, onInfoPress }: EstoqueCriticoProps) {
   const [products, setProducts] = useState<EstoqueCriticoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const range = dateRange
+    ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+    : undefined;
 
   useEffect(() => {
     let active = true;
@@ -35,7 +39,7 @@ export function EstoqueCritico({ onInfoPress }: EstoqueCriticoProps) {
       setLoading(true);
       setError(null);
 
-      const result = await GraphicService.getEstoqueCritico();
+      const result = await GraphicService.getEstoqueCritico(range);
       if (!active) return;
 
       if (result?.success) {
@@ -52,21 +56,36 @@ export function EstoqueCritico({ onInfoPress }: EstoqueCriticoProps) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [range?.endDate, range?.startDate]);
+
+  const formatRangeLabel = (date: Date) =>
+    date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+  const periodLabel = dateRange
+    ? `${formatRangeLabel(dateRange.startDate)} - ${formatRangeLabel(
+        dateRange.endDate
+      )}`
+    : "Reposição";
 
   const displayProducts = useMemo(() => products.slice(0, 6), [products]);
 
   return (
     <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
-          <Text className="text-base font-semibold text-text-primary">
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1 flex-row items-center gap-2 pr-2">
+          <Text
+            className="flex-1 text-base font-semibold text-text-primary"
+            numberOfLines={2}
+          >
             Estoque crítico
           </Text>
           {onInfoPress ? (
             <Pressable
               onPress={onInfoPress}
-              className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+              className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-background-secondary"
               accessibilityRole="button"
               accessibilityLabel="Informacoes sobre estoque critico"
             >
@@ -78,7 +97,15 @@ export function EstoqueCritico({ onInfoPress }: EstoqueCriticoProps) {
             </Pressable>
           ) : null}
         </View>
-        <Text className="text-xs text-text-tertiary">Reposição</Text>
+        <View className="w-[42%] shrink-0 items-end">
+          <Text
+            className="text-right text-xs text-text-tertiary"
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {periodLabel}
+          </Text>
+        </View>
       </View>
 
       <View className="mt-4 gap-3">

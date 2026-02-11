@@ -464,16 +464,23 @@ export class GraphicService {
     }
   }
 
-  static async getEstoqueCritico() {
+  static async getEstoqueCritico(range?: {
+    startDate?: Date | string;
+    endDate?: Date | string;
+  }) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const rangeQuery = buildRangeQuery(range);
 
-      const response = await fetch(`${getBaseUrl()}/graphics/estoque-critico`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-      });
+      const response = await fetch(
+        `${getBaseUrl()}/graphics/estoque-critico?${rangeQuery.slice(1)}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+        }
+      );
 
       clearTimeout(timeoutId);
 

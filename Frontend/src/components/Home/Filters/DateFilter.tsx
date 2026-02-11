@@ -49,6 +49,69 @@ const formatRangeLabel = (date: Date) =>
 
 export function DateFilter({ value, onChange }: DateFilterProps) {
   const { theme } = useTheme();
+  const calendarTokens = useMemo(
+    () =>
+      theme === "dark"
+        ? {
+            accent: "#60A5FA",
+            selectedText: "#0B1220",
+            rangeFill: "rgba(96, 165, 250, 0.28)",
+            dayText: "#E2E8F0",
+            monthText: "#E2E8F0",
+            sectionTitle: "#94A3B8",
+            disabledText: "#475569",
+            containerBg: "#0B1220",
+            containerBorder: "#334155",
+            headerBg: "#0F172A",
+          }
+        : {
+            accent: "#2563EB",
+            selectedText: "#FFFFFF",
+            rangeFill: "rgba(37, 99, 235, 0.16)",
+            dayText: "#0F172A",
+            monthText: "#0F172A",
+            sectionTitle: "#64748B",
+            disabledText: "#CBD5E1",
+            containerBg: "#FFFFFF",
+            containerBorder: "#E2E8F0",
+            headerBg: "#F8FAFC",
+          },
+    [theme]
+  );
+  const calendarTheme = useMemo(
+    () => ({
+      backgroundColor: calendarTokens.containerBg,
+      calendarBackground: calendarTokens.containerBg,
+      textSectionTitleColor: calendarTokens.sectionTitle,
+      selectedDayBackgroundColor: calendarTokens.accent,
+      selectedDayTextColor: calendarTokens.selectedText,
+      todayTextColor: calendarTokens.accent,
+      dayTextColor: calendarTokens.dayText,
+      textDisabledColor: calendarTokens.disabledText,
+      arrowColor: calendarTokens.accent,
+      monthTextColor: calendarTokens.monthText,
+      textMonthFontWeight: "600" as const,
+      textDayFontSize: 12,
+      textMonthFontSize: 14,
+      textDayHeaderFontSize: 12,
+      "stylesheet.day.basic": {
+        base: {
+          alignItems: "center" as const,
+          justifyContent: "center" as const,
+          backgroundColor: "transparent",
+        },
+        text: {
+          color: calendarTokens.dayText,
+        },
+        todayText: {
+          color: calendarTokens.accent,
+          fontWeight: "700" as const,
+        },
+      },
+    }),
+    [calendarTokens]
+  );
+
   const presets = [
     { label: "1 mês", value: "1m" as const },
     { label: "3 meses", value: "3m" as const },
@@ -67,8 +130,8 @@ export function DateFilter({ value, onChange }: DateFilterProps) {
         [startKey]: {
           startingDay: true,
           endingDay: true,
-          color: "#2563EB",
-          textColor: "#FFFFFF",
+          color: calendarTokens.accent,
+          textColor: calendarTokens.selectedText,
         },
       };
     }
@@ -76,13 +139,13 @@ export function DateFilter({ value, onChange }: DateFilterProps) {
     const marks: Record<string, any> = {
       [startKey]: {
         startingDay: true,
-        color: "#2563EB",
-        textColor: "#FFFFFF",
+        color: calendarTokens.accent,
+        textColor: calendarTokens.selectedText,
       },
       [endKey]: {
         endingDay: true,
-        color: "#2563EB",
-        textColor: "#FFFFFF",
+        color: calendarTokens.accent,
+        textColor: calendarTokens.selectedText,
       },
     };
 
@@ -91,13 +154,13 @@ export function DateFilter({ value, onChange }: DateFilterProps) {
     while (cursor < end) {
       const key = toDateKey(cursor);
       marks[key] = {
-        color: "rgba(37, 99, 235, 0.2)",
-        textColor: theme === "dark" ? "#E2E8F0" : "#0F172A",
+        color: calendarTokens.rangeFill,
+        textColor: calendarTokens.dayText,
       };
       cursor.setDate(cursor.getDate() + 1);
     }
     return marks;
-  }, [theme, value.endDate, value.startDate]);
+  }, [calendarTokens, value.endDate, value.startDate]);
 
   const handlePresetPress = (preset: DateRangePreset) => {
     if (preset === "custom") {
@@ -180,27 +243,20 @@ export function DateFilter({ value, onChange }: DateFilterProps) {
       </ScrollView>
 
       {value.preset === "custom" ? (
-        <View className="mt-4 overflow-hidden rounded-2xl border border-divider bg-background-secondary">
+        <View
+          className="mt-4 overflow-hidden rounded-2xl border"
+          style={{
+            borderColor: calendarTokens.containerBorder,
+            backgroundColor: calendarTokens.containerBg,
+          }}
+        >
           <Calendar
+            key={`calendar-${theme}`}
+            style={{ backgroundColor: calendarTokens.containerBg }}
             markingType="period"
             markedDates={markedDates}
             onDayPress={handleDayPress}
-            theme={{
-              backgroundColor: "transparent",
-              calendarBackground: "transparent",
-              textSectionTitleColor: theme === "dark" ? "#94A3B8" : "#64748B",
-              selectedDayBackgroundColor: "#2563EB",
-              selectedDayTextColor: "#FFFFFF",
-              todayTextColor: "#2563EB",
-              dayTextColor: theme === "dark" ? "#E2E8F0" : "#0F172A",
-              textDisabledColor: theme === "dark" ? "#475569" : "#CBD5F1",
-              arrowColor: "#2563EB",
-              monthTextColor: theme === "dark" ? "#E2E8F0" : "#0F172A",
-              textMonthFontWeight: "600",
-              textDayFontSize: 12,
-              textMonthFontSize: 14,
-              textDayHeaderFontSize: 12,
-            }}
+            theme={calendarTheme}
           />
         </View>
       ) : null}
