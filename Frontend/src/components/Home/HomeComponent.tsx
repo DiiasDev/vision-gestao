@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Dimensions, ScrollView, Text, View } from "react-native";
-import {
-  BarChart,
-  LineChart,
-} from "react-native-chart-kit";
+import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
+import { BarChart } from "react-native-chart-kit";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   FinanceMovementView,
@@ -19,6 +17,7 @@ import {
   DateFilter,
   DateRangeValue,
 } from "./Filters/DateFilter";
+import { HomeInfoTopic, InfoModal } from "./Modals/infoModal";
 
 type HomeComponentProps = {
   userName?: string;
@@ -28,18 +27,10 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
   const { theme } = useTheme();
   const screenWidth = Dimensions.get("window").width;
   const chartWidth = screenWidth - 48;
-  const lineLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-  const lineValues = [4.2, 4.8, 5.1, 5.0, 5.6, 6.3, 6.1];
-  const lineChartHeight = 220;
-  const [lineTooltip, setLineTooltip] = useState<{
-    title: string;
-    value: string;
-    x: number;
-    y: number;
-  } | null>(null);
   const [movements, setMovements] = useState<FinanceMovementView[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(true);
   const [movementError, setMovementError] = useState<string | null>(null);
+  const [infoTopic, setInfoTopic] = useState<HomeInfoTopic | null>(null);
   const [dateRange, setDateRange] = useState<DateRangeValue>(() => {
     const endDate = new Date();
     const startDate = new Date(endDate.getFullYear(), 0, 1);
@@ -139,13 +130,22 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
     return ordered.slice(0, 3);
   }, [filteredMovements]);
 
+  const openInfo = (topic: HomeInfoTopic) => {
+    setInfoTopic(topic);
+  };
+
+  const closeInfo = () => {
+    setInfoTopic(null);
+  };
+
   return (
-    <ScrollView
-      className="flex-1 bg-background-primary"
-      contentContainerStyle={{ paddingBottom: 140 }}
-      showsVerticalScrollIndicator={false}
-    >
-      <View className="px-6 pt-10">
+    <>
+      <ScrollView
+        className="flex-1 bg-background-primary"
+        contentContainerStyle={{ paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="px-6 pt-10">
         <View className="mb-6">
           <Text className="text-sm uppercase tracking-widest text-text-secondary">
             Dashboard Financeiro
@@ -166,19 +166,38 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </Text>
         </View>
 
-        <ValuesCards dateRange={dateRange} />
+          <ValuesCards
+            dateRange={dateRange}
+            onInfoPress={() => openInfo("values_cards")}
+          />
 
-        <VendasMensais dateRange={dateRange} />
+          <VendasMensais
+            dateRange={dateRange}
+            onInfoPress={() => openInfo("vendas_mensais")}
+          />
 
-        <CustoXLucro dateRange={dateRange} />
+          <CustoXLucro
+            dateRange={dateRange}
+            onInfoPress={() => openInfo("custo_lucro")}
+          />
 
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Movimentações recentes
-            </Text>
-            <Text className="text-xs text-text-tertiary">Hoje</Text>
-          </View>
+          <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-base font-semibold text-text-primary">
+                  Movimentações recentes
+                </Text>
+                <Pressable
+                  onPress={() => openInfo("movimentacoes_recentes")}
+                  className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+                  accessibilityRole="button"
+                  accessibilityLabel="Informacoes sobre movimentacoes recentes"
+                >
+                  <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
+                </Pressable>
+              </View>
+              <Text className="text-xs text-text-tertiary">Hoje</Text>
+            </View>
           <View className="mt-4 gap-3">
             {loadingMovements ? (
               <View className="rounded-2xl bg-background-secondary px-4 py-3">
@@ -243,14 +262,18 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </Text>
         </View>
 
-        <ServicosPorCategorias
-          chartWidth={chartWidth}
-          chartConfig={chartConfig}
-          textMuted={themeTokens.textMuted}
-          dateRange={dateRange}
-        />
+          <ServicosPorCategorias
+            chartWidth={chartWidth}
+            chartConfig={chartConfig}
+            textMuted={themeTokens.textMuted}
+            dateRange={dateRange}
+            onInfoPress={() => openInfo("servicos_categoria")}
+          />
 
-        <StatusOS dateRange={dateRange} />
+          <StatusOS
+            dateRange={dateRange}
+            onInfoPress={() => openInfo("status_os")}
+          />
 
         <View className="mt-2 mb-4">
           <Text className="text-xs uppercase tracking-widest text-text-secondary">
@@ -258,13 +281,23 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </Text>
         </View>
 
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Estoque crítico
-            </Text>
-            <Text className="text-xs text-text-tertiary">Reposição</Text>
-          </View>
+          <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-base font-semibold text-text-primary">
+                  Estoque crítico
+                </Text>
+                <Pressable
+                  onPress={() => openInfo("estoque_critico")}
+                  className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+                  accessibilityRole="button"
+                  accessibilityLabel="Informacoes sobre estoque critico"
+                >
+                  <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
+                </Pressable>
+              </View>
+              <Text className="text-xs text-text-tertiary">Reposição</Text>
+            </View>
           <View className="mt-4 gap-3">
             {[
               { name: "Película 3D", level: 18, max: 100 },
@@ -298,13 +331,23 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
           </View>
         </View>
 
-        <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">
-              Giro de estoque
-            </Text>
-            <Text className="text-xs text-text-tertiary">Últimos 30 dias</Text>
-          </View>
+          <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-base font-semibold text-text-primary">
+                  Giro de estoque
+                </Text>
+                <Pressable
+                  onPress={() => openInfo("giro_estoque")}
+                  className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+                  accessibilityRole="button"
+                  accessibilityLabel="Informacoes sobre giro de estoque"
+                >
+                  <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
+                </Pressable>
+              </View>
+              <Text className="text-xs text-text-tertiary">Últimos 30 dias</Text>
+            </View>
           <View className="mt-4 items-center">
             <BarChart
               data={{
@@ -325,7 +368,9 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
             />
           </View>
         </View>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+      <InfoModal visible={Boolean(infoTopic)} topic={infoTopic} onClose={closeInfo} />
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 import Svg, { Text as SvgText } from "react-native-svg";
+import { Ionicons } from "@expo/vector-icons";
 import {
   GraphicService,
   ServicosPorCategoriaData,
@@ -33,6 +34,7 @@ type ServicosPorCategoriasProps = {
   };
   textMuted: string;
   dateRange?: { startDate: Date; endDate: Date };
+  onInfoPress?: () => void;
 };
 
 export function ServicosPorCategorias({
@@ -40,6 +42,7 @@ export function ServicosPorCategorias({
   chartConfig,
   textMuted,
   dateRange,
+  onInfoPress,
 }: ServicosPorCategoriasProps) {
   const range = dateRange
     ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
@@ -181,9 +184,21 @@ export function ServicosPorCategorias({
   return (
     <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-text-primary">
-          Serviços por categoria
-        </Text>
+        <View className="flex-row items-center gap-2">
+          <Text className="text-base font-semibold text-text-primary">
+            Serviços por categoria
+          </Text>
+          {onInfoPress ? (
+            <Pressable
+              onPress={onInfoPress}
+              className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+              accessibilityRole="button"
+              accessibilityLabel="Informacoes sobre servicos por categoria"
+            >
+              <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
+            </Pressable>
+          ) : null}
+        </View>
         <View className="items-end">
           <Text
             className="text-xs text-text-tertiary"

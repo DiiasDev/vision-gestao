@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   GraphicService,
   ValuesCardsData,
@@ -18,6 +19,7 @@ type ValuesCardsProps = {
   saldoLabel?: string;
   saldoValue?: string;
   dateRange?: { startDate: Date; endDate: Date };
+  onInfoPress?: () => void;
 };
 
 export function ValuesCards({
@@ -29,6 +31,7 @@ export function ValuesCards({
   custosHint,
   saldoLabel = "Saldo em caixa",
   dateRange,
+  onInfoPress,
 }: ValuesCardsProps) {
   const [data, setData] = useState<ValuesCardsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,9 +123,21 @@ export function ValuesCards({
   return (
     <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-text-primary">
-          {title}
-        </Text>
+        <View className="flex-1 flex-row items-center gap-2 pr-3">
+          <Text className="text-base font-semibold text-text-primary">
+            {title}
+          </Text>
+          {onInfoPress ? (
+            <Pressable
+              onPress={onInfoPress}
+              className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+              accessibilityRole="button"
+              accessibilityLabel={`Informacoes sobre ${title}`}
+            >
+              <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
+            </Pressable>
+          ) : null}
+        </View>
         <Text
           className="text-xs text-text-tertiary"
           numberOfLines={1}

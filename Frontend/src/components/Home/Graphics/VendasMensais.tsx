@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dimensions, Pressable, Text, View } from "react-native";
 import { BarChart } from "react-native-chart-kit";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../contexts/ThemeContext";
 import {
   GraphicService,
@@ -51,8 +52,10 @@ const buildFallbackMonths = () => {
 
 export function VendasMensais({
   dateRange,
+  onInfoPress,
 }: {
   dateRange?: { startDate: Date; endDate: Date };
+  onInfoPress?: () => void;
 }) {
   const { theme } = useTheme();
   const screenWidth = Dimensions.get("window").width;
@@ -166,9 +169,21 @@ export function VendasMensais({
   return (
     <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-text-primary">
-          Vendas mensais
-        </Text>
+        <View className="flex-1 flex-row items-center gap-2 pr-3">
+          <Text className="text-base font-semibold text-text-primary">
+            Vendas mensais
+          </Text>
+          {onInfoPress ? (
+            <Pressable
+              onPress={onInfoPress}
+              className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
+              accessibilityRole="button"
+              accessibilityLabel="Informacoes sobre vendas mensais"
+            >
+              <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
+            </Pressable>
+          ) : null}
+        </View>
         <Text
           className="text-xs text-text-tertiary"
           numberOfLines={1}
