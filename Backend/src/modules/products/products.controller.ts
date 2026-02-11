@@ -84,6 +84,8 @@ export class ProductsController {
       const result = await this.product.deleteProduct(productId);
       const statusCode = result.success
         ? 200
+        : result.code === "23503"
+          ? 409
         : result.message === "Produto não encontrado"
           ? 404
           : 400;

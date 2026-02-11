@@ -283,7 +283,22 @@ export class ProductsService {
         };
       }
 
-      const query = `DELETE FROM produtos WHERE id = $1 RETURNING *;`;
+      const query = `
+        WITH deleted_movements AS (
+          DELETE FROM estoque_movimentacoes
+          WHERE produto_id = $1
+          RETURNING 1
+        ),
+        deleted_product AS (
+          DELETE FROM produtos
+          WHERE id = $1
+          RETURNING *
+        )
+        SELECT
+          deleted_product.*,
+          (SELECT COUNT(*)::int FROM deleted_movements) AS deleted_movements_count
+        FROM deleted_product;
+      `;
       const result = await pool.query(query, [id]);
 
       if (!result.rows[0]) {
@@ -297,9 +312,20 @@ export class ProductsService {
         success: true,
         message: "Produto excluído com sucesso",
         product: result.rows[0] ?? null,
+        deletedMovements: Number(result.rows[0]?.deleted_movements_count ?? 0),
       };
     } catch (error: any) {
       console.log("erro ao excluir produto: ", error);
+      if (error?.code === "23503") {
+        return {
+          success: false,
+          message:
+            "Não é possível excluir este produto porque ele possui registros relacionados",
+          code: error?.code,
+          constraint: error?.constraint,
+        };
+      }
+
       return {
         success: false,
         message: "Erro ao excluir produto",
