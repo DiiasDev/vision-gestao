@@ -43,6 +43,9 @@ type FormComponentProps = {
   initialData?: Record<string, any> | null;
   onBack?: () => void;
   backButtonText?: string;
+  cardClassName?: string;
+  backButtonClassName?: string;
+  backButtonTextClassName?: string;
 };
 
 type SelectState = {
@@ -97,6 +100,9 @@ export default function FormComponent({
   initialData = null,
   onBack,
   backButtonText = "Voltar",
+  cardClassName = "rounded-3xl border border-divider bg-card-background p-6",
+  backButtonClassName = "rounded-full border border-divider px-3 py-1",
+  backButtonTextClassName = "text-sm text-text-secondary",
 }: FormComponentProps) {
   const resolvedInitialData = useMemo(
     () => initialData ?? {},
@@ -346,7 +352,7 @@ export default function FormComponent({
         contentContainerStyle={{ padding: 24 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="rounded-3xl border border-divider bg-card-background p-6">
+        <View className={cardClassName}>
           <View className="mb-6">
             <View className="flex-row items-center justify-between">
               <Text className="text-2xl font-semibold text-text-primary">
@@ -355,9 +361,9 @@ export default function FormComponent({
               {onBack ? (
                 <Pressable
                   onPress={onBack}
-                  className="rounded-full border border-divider px-3 py-1"
+                  className={backButtonClassName}
                 >
-                  <Text className="text-sm text-text-secondary">
+                  <Text className={backButtonTextClassName}>
                     {backButtonText}
                   </Text>
                 </Pressable>

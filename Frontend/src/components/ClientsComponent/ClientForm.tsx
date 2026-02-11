@@ -32,6 +32,9 @@ export default function ClientForm({ onBack }: ClientFormProps) {
         title="Cadastrar cliente"
         subtitle="Cadastre os dados do cliente para histórico e cobranças."
         onBack={onBack}
+        cardClassName="rounded-3xl bg-card-background p-6"
+        backButtonClassName="rounded-full bg-background-secondary px-3 py-1"
+        backButtonTextClassName="text-sm text-text-secondary"
         onSubmit={async (data) => {
           if (!data?.nome) {
             setAlert({

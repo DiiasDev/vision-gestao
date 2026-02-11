@@ -536,7 +536,7 @@ export default function ListClients({
             </Text>
             <Pressable
               onPress={() => setSelectedClient(null)}
-              className="rounded-full border border-divider px-3 py-1"
+              className="rounded-full bg-background-secondary px-3 py-1"
             >
               <Text className="text-sm text-text-secondary">Fechar</Text>
             </Pressable>

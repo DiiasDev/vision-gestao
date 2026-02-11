@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Platform, Pressable, StatusBar, Text, View } from "react-native";
 import BottomNavigation from "../../components/BottomNavigation/BottomNavigation";
 import HomeComponent from "../../components/Home/HomeComponent";
 import NewScreenComponent, {
@@ -33,6 +33,8 @@ export default function DashboardFinance({
   userName,
   onLogout,
 }: DashboardFinanceProps) {
+  const modalTopPadding =
+    Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ?? 0) + 12;
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [activeNewForm, setActiveNewForm] = useState<NewActionKey | null>(
@@ -77,7 +79,10 @@ export default function DashboardFinance({
         onRequestClose={() => setActiveNewForm(null)}
       >
         <View className="flex-1 bg-background-primary">
-          <View className="flex-row items-center justify-between px-6 pt-6">
+          <View
+            className="flex-row items-center justify-between px-6"
+            style={{ paddingTop: modalTopPadding }}
+          >
             <Text className="text-lg font-semibold text-text-primary">
               {activeNewForm === "products"
                 ? "Novo produto"
@@ -93,7 +98,7 @@ export default function DashboardFinance({
             </Text>
             <Pressable
               onPress={() => setActiveNewForm(null)}
-              className="rounded-full border border-divider px-3 py-1"
+              className="rounded-full bg-background-secondary px-3 py-1"
             >
               <Text className="text-sm text-text-secondary">Fechar</Text>
             </Pressable>

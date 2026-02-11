@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 import Svg, { Text as SvgText } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../../contexts/ThemeContext";
 import {
   GraphicService,
   ServicosPorCategoriaData,
@@ -44,6 +45,7 @@ export function ServicosPorCategorias({
   dateRange,
   onInfoPress,
 }: ServicosPorCategoriasProps) {
+  const { theme } = useTheme();
   const range = dateRange
     ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
     : undefined;
@@ -59,16 +61,31 @@ export function ServicosPorCategorias({
   const [error, setError] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
-  const palette = [
-    "#2563EB",
-    "#16A34A",
-    "#F59E0B",
-    "#0EA5E9",
-    "#9333EA",
-    "#EF4444",
-    "#14B8A6",
-    "#F97316",
-  ];
+  const palette = useMemo(
+    () =>
+      theme === "dark"
+        ? [
+            "#60A5FA",
+            "#4ADE80",
+            "#FACC15",
+            "#38BDF8",
+            "#C084FC",
+            "#FB7185",
+            "#2DD4BF",
+            "#FB923C",
+          ]
+        : [
+            "#2563EB",
+            "#16A34A",
+            "#F59E0B",
+            "#0EA5E9",
+            "#9333EA",
+            "#EF4444",
+            "#14B8A6",
+            "#F97316",
+          ],
+    [theme]
+  );
 
   useEffect(() => {
     let active = true;
@@ -159,7 +176,18 @@ export function ServicosPorCategorias({
   const pieSize = Math.min(Math.max(chartWidth - 40, 140), 240);
   const pieCenter = Math.max((chartWidth - pieSize) / 2, 0);
   const pieOffset = pieCenter + 6;
-  const labelRadius = pieSize * 0.25;
+  const labelRadius = pieSize * 0.26;
+  const pieChartConfig = useMemo(
+    () => ({
+      ...chartConfig,
+      labelColor: (opacity = 1) =>
+        theme === "dark"
+          ? `rgba(241, 245, 249, ${opacity})`
+          : `rgba(15, 23, 42, ${opacity})`,
+    }),
+    [chartConfig, theme]
+  );
+  const pieLabelColor = theme === "dark" ? "#0F172A" : "#FFFFFF";
 
   const labelPositions = useMemo(() => {
     const total = filteredTotal;
@@ -179,7 +207,7 @@ export function ServicosPorCategorias({
         y: centerY + Math.sin(mid) * labelRadius,
       };
     });
-  }, [chartData, chartWidth, filteredTotal, pieCenter, pieSize, labelRadius]);
+  }, [chartData, chartWidth, filteredTotal, pieCenter, pieOffset, pieSize, labelRadius]);
 
   return (
     <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
@@ -245,7 +273,7 @@ export function ServicosPorCategorias({
               accessor="population"
               backgroundColor="transparent"
               paddingLeft="0"
-              chartConfig={chartConfig}
+              chartConfig={pieChartConfig}
               center={[pieCenter, 0]}
               hasLegend={false}
               absolute={false}
@@ -262,9 +290,9 @@ export function ServicosPorCategorias({
                   key={`${item.label}-${index}`}
                   x={item.x}
                   y={item.y}
-                  fill={chartConfig.labelColor(1)}
-                  fontSize="11"
-                  fontWeight="600"
+                  fill={pieLabelColor}
+                  fontSize="13"
+                  fontWeight="700"
                   textAnchor="middle"
                   alignmentBaseline="middle"
                 >
