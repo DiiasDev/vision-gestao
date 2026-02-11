@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
-import { BarChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
@@ -14,6 +13,7 @@ import { ValuesCards } from "./Cards/ValuesCards";
 import { StatusOS } from "./Cards/StatusOS";
 import { ServicosPorCategorias } from "./Graphics/servicosPorCategorias";
 import { EstoqueCritico } from "./Cards/EstoqueCritico";
+import { RankingProducts } from "./Graphics/RankingProducts";
 import {
   DateFilter,
   DateRangeValue,
@@ -284,43 +284,10 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
 
           <EstoqueCritico onInfoPress={() => openInfo("estoque_critico")} />
 
-          <View className="mb-6 rounded-[28px] bg-card-background p-5 border border-divider shadow-lg">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-base font-semibold text-text-primary">
-                  Giro de estoque
-                </Text>
-                <Pressable
-                  onPress={() => openInfo("giro_estoque")}
-                  className="h-7 w-7 items-center justify-center rounded-full bg-background-secondary"
-                  accessibilityRole="button"
-                  accessibilityLabel="Informacoes sobre giro de estoque"
-                >
-                  <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
-                </Pressable>
-              </View>
-              <Text className="text-xs text-text-tertiary">Últimos 30 dias</Text>
-            </View>
-          <View className="mt-4 items-center">
-            <BarChart
-              data={{
-                labels: ["Capas", "Películas", "Cabos", "Carreg.", "Peças"],
-                datasets: [{ data: [92, 78, 64, 48, 36] }],
-              }}
-              width={chartWidth}
-              height={220}
-              fromZero
-              withInnerLines={false}
-              yAxisLabel=""
-              yAxisSuffix=""
-              chartConfig={{
-                ...chartConfig,
-                decimalPlaces: 0,
-              }}
-              style={{ borderRadius: 16 }}
-            />
-          </View>
-        </View>
+          <RankingProducts
+            dateRange={dateRange}
+            onInfoPress={() => openInfo("ranking_produtos")}
+          />
         </View>
       </ScrollView>
       <InfoModal visible={Boolean(infoTopic)} topic={infoTopic} onClose={closeInfo} />

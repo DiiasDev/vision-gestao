@@ -9,7 +9,7 @@ export type HomeInfoTopic =
   | "servicos_categoria"
   | "status_os"
   | "estoque_critico"
-  | "giro_estoque";
+  | "ranking_produtos";
 
 type InfoModalProps = {
   visible: boolean;
@@ -204,30 +204,30 @@ const INFO_CONTENT: Record<HomeInfoTopic, TopicContent> = {
     example:
       "Bateria iPhone 11 com 9 unidades de maximo 60 equivale a 15% do nivel, indicando reposicao urgente.",
   },
-  giro_estoque: {
-    title: "Giro de Estoque",
-    subtitle: "Quantidade movimentada por categoria de item no periodo recente.",
+  ranking_produtos: {
+    title: "Ranking de Produtos Mais Vendidos",
+    subtitle: "Analise dos itens com maior saida no periodo filtrado.",
     sections: [
       {
         title: "Como funciona",
         items: [
-          "Cada barra mostra quantas unidades foram movimentadas por tipo de item.",
-          "Valores mais altos representam maior velocidade de saida/consumo.",
-          "A comparacao ajuda a priorizar compras e planejar reposicao.",
+          "O ranking soma as saidas de estoque por produto.",
+          "Voce pode alternar entre visualizacao em lista e grafico.",
+          "O filtro de datas da Home define o periodo considerado.",
         ],
       },
       {
         title: "Como interpretar",
         items: [
-          "Itens com giro alto precisam de reposicao frequente para evitar falta.",
-          "Itens com giro baixo podem estar imobilizando capital em estoque.",
-          "O equilibrio entre giro e margem melhora rentabilidade de compras.",
+          "Itens no topo exigem reposicao mais frequente para evitar ruptura.",
+          "Mudancas no ranking ajudam a prever sazonalidade de demanda.",
+          "Combine com estoque critico para priorizar compras com impacto real.",
         ],
       },
     ],
     exampleTitle: "Exemplo rapido",
     example:
-      "Capas com giro 92 e pecas com giro 36 indicam que capas devem ter estoque minimo maior para evitar ruptura.",
+      "Se Pelicula 3D saiu 120 unidades e Bateria iPhone 11 saiu 85, a compra da pelicula deve ter prioridade de reposicao.",
   },
 };
 

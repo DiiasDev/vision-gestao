@@ -16,5 +16,9 @@ router.get(
   "/graphics/estoque-critico",
   controller.getEstoqueCritico.bind(controller),
 );
+router.get(
+  "/graphics/ranking-produtos",
+  controller.getRankingProdutos.bind(controller),
+);
 
 export const graphicRoutes = router;

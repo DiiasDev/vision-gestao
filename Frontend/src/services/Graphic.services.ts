@@ -132,6 +132,23 @@ export type EstoqueCriticoResponse = {
   products: EstoqueCriticoItem[];
 };
 
+export type RankingProdutoItem = {
+  id: string;
+  nome: string;
+  quantidade: number;
+};
+
+export type RankingProdutosData = {
+  totalSaidas: number;
+  produtos: RankingProdutoItem[];
+};
+
+export type RankingProdutosResponse = {
+  success: boolean;
+  message?: string;
+  data: RankingProdutosData;
+};
+
 export class GraphicService {
   static async getVendasMensais(
     months = 6,
@@ -476,12 +493,11 @@ export class GraphicService {
         } as EstoqueCriticoResponse;
       }
 
-      const hasValidShape =
-        data &&
-        typeof data.success === "boolean" &&
-        Array.isArray(data.products);
-
-      if (!hasValidShape) {
+      if (
+        !data ||
+        typeof data.success !== "boolean" ||
+        !Array.isArray(data.products)
+      ) {
         return {
           success: false,
           message: "Resposta invalida ao carregar estoque critico",
@@ -504,6 +520,69 @@ export class GraphicService {
         message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
         products: [],
       } as EstoqueCriticoResponse;
+    }
+  }
+
+  static async getRankingProdutos(range?: {
+    startDate?: Date | string;
+    endDate?: Date | string;
+  }) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const rangeQuery = buildRangeQuery(range);
+      const response = await fetch(
+        `${getBaseUrl()}/graphics/ranking-produtos?${rangeQuery.slice(1)}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+        },
+      );
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+      let data: RankingProdutosResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as RankingProdutosResponse) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message ?? "Falha ao carregar ranking de produtos",
+          data: { totalSaidas: 0, produtos: [] },
+        } as RankingProdutosResponse;
+      }
+
+      if (
+        !data ||
+        typeof data.success !== "boolean" ||
+        !data.data ||
+        !Array.isArray(data.data.produtos)
+      ) {
+        return {
+          success: false,
+          message: "Resposta invalida ao carregar ranking de produtos",
+          data: { totalSaidas: 0, produtos: [] },
+        } as RankingProdutosResponse;
+      }
+
+      return data;
+    } catch (error: any) {
+      const isAbort = error?.name === "AbortError";
+      if (!isAbort) {
+        console.error("Erro ao carregar ranking de produtos:", error);
+      }
+      return {
+        success: false,
+        message: isAbort ? "Tempo de conexão esgotado" : "Erro de conexão",
+        data: { totalSaidas: 0, produtos: [] },
+      } as RankingProdutosResponse;
     }
   }
 }

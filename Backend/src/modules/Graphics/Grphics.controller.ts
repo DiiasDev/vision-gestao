@@ -94,4 +94,19 @@ export class GraphicsController {
       return res.status(500).json("");
     }
   }
+
+  public async getRankingProdutos(req: Request, res: Response) {
+    try {
+      const range = this.getRangeParams(req);
+      const data = await this.GraphicServices.rankingProdutos(range);
+      return res.status(200).json(data);
+    } catch (error: any) {
+      console.error("erro ao pegar ranking de produtos: ", error);
+      return res.status(500).json({
+        success: false,
+        message: "Erro ao pegar ranking de produtos",
+        data: { totalSaidas: 0, produtos: [] },
+      });
+    }
+  }
 }

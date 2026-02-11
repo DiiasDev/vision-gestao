@@ -725,4 +725,85 @@ export class GraphicsServices {
       };
     }
   }
+
+  public async rankingProdutos(range?: { startDate?: string; endDate?: string }) {
+    try {
+      const result = await this.products.getStockMovements({ limit: 500 });
+      if (!result?.success) {
+        return {
+          success: false,
+          message:
+            result?.message ?? "Erro ao buscar movimentacoes para ranking de produtos",
+          data: { totalSaidas: 0, produtos: [] },
+        };
+      }
+
+      const resolvedRange = this.resolveRange(range?.startDate, range?.endDate);
+      const movements = result.movements ?? [];
+
+      const normalizeNumber = (raw: any) => {
+        if (raw === undefined || raw === null || raw === "") return 0;
+        if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
+        const parsed = Number(String(raw).replace(",", "."));
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const filtered = movements.filter((item: any) => {
+        const type = String(item?.tipo ?? item?.movement_type ?? "").toLowerCase();
+        if (type !== "saida") return false;
+        if (!resolvedRange) return true;
+        const parsedDate = this.parseDate(
+          item?.criado_em ?? item?.created_at ?? item?.date,
+        );
+        if (!parsedDate) return false;
+        return parsedDate.isBetween(
+          resolvedRange.start,
+          resolvedRange.end,
+          undefined,
+          "[]",
+        );
+      });
+
+      const grouped = filtered.reduce(
+        (acc: Record<string, { id: string; nome: string; quantidade: number }>, item: any) => {
+          const id = String(item?.produto_id ?? item?.product_id ?? "sem-id");
+          const nome = String(
+            item?.produto_nome ?? item?.product_name ?? "Produto sem nome",
+          ).trim();
+          if (!acc[id]) {
+            acc[id] = {
+              id,
+              nome: nome || "Produto sem nome",
+              quantidade: 0,
+            };
+          }
+          acc[id].quantidade += normalizeNumber(item?.quantidade ?? item?.quantity);
+          return acc;
+        },
+        {},
+      );
+
+      const produtos = Object.values(grouped)
+        .sort((a, b) => b.quantidade - a.quantidade)
+        .slice(0, 5);
+
+      const totalSaidas = produtos.reduce((acc, item) => acc + item.quantidade, 0);
+
+      return {
+        success: true,
+        message: "Ranking de produtos calculado com sucesso",
+        data: {
+          totalSaidas,
+          produtos,
+        },
+      };
+    } catch (error: any) {
+      console.error("erro ao calcular ranking de produtos:", error);
+      return {
+        success: false,
+        message: "Erro ao calcular ranking de produtos",
+        data: { totalSaidas: 0, produtos: [] },
+      };
+    }
+  }
 }
