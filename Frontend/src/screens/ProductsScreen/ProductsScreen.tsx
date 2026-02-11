@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ListProducts from "../../components/ProductsComponents/ListProducts";
+import ListEstoque from "../../components/ProductsComponents/ListEstoque";
 import { Product, ProductsService } from "../../services/Products.services";
-import EstoqueScreen from "./EstoqueScreen";
 
 type ProductsScreenProps = {
   onBack?: () => void;
@@ -14,7 +14,7 @@ export default function ProductsScreen({ onBack }: ProductsScreenProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [isEstoqueOpen, setIsEstoqueOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"produto" | "estoque">("produto");
 
   const loadProducts = useCallback(async (silent?: boolean) => {
     if (!silent) setLoading(true);
@@ -75,66 +75,74 @@ export default function ProductsScreen({ onBack }: ProductsScreenProps) {
           ) : null}
         </View>
 
-        <Pressable
-          onPress={() => setIsEstoqueOpen(true)}
-          className="mt-6 flex-row items-center justify-between rounded-2xl border border-divider bg-card-background px-4 py-3"
-        >
-          <View className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-xl bg-background-secondary">
-              <Ionicons name="layers-outline" size={18} color="#2563EB" />
-            </View>
-            <View>
-              <Text className="text-sm font-semibold text-text-primary">
-                Ver painel de estoque
+        <View className="mt-6 rounded-2xl border border-divider bg-card-background p-1">
+          <View className="flex-row gap-1">
+            <Pressable
+              onPress={() => setActiveTab("produto")}
+              className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl px-4 py-3 ${
+                activeTab === "produto" ? "bg-background-secondary" : ""
+              }`}
+            >
+              <Ionicons
+                name="cube-outline"
+                size={16}
+                color={activeTab === "produto" ? "#2563EB" : "#9CA3AF"}
+              />
+              <Text
+                className={`text-sm font-semibold ${
+                  activeTab === "produto"
+                    ? "text-text-primary"
+                    : "text-text-tertiary"
+                }`}
+              >
+                Produtos
               </Text>
-              <Text className="mt-1 text-xs text-text-tertiary">
-                Movimentações, alertas e recomendações
+            </Pressable>
+
+            <Pressable
+              onPress={() => setActiveTab("estoque")}
+              className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl px-4 py-3 ${
+                activeTab === "estoque" ? "bg-background-secondary" : ""
+              }`}
+            >
+              <Ionicons
+                name="layers-outline"
+                size={16}
+                color={activeTab === "estoque" ? "#2563EB" : "#9CA3AF"}
+              />
+              <Text
+                className={`text-sm font-semibold ${
+                  activeTab === "estoque"
+                    ? "text-text-primary"
+                    : "text-text-tertiary"
+                }`}
+              >
+                Estoque
               </Text>
-            </View>
+            </Pressable>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-        </Pressable>
+        </View>
       </View>
 
       <View className="flex-1 z-0">
-        <ListProducts
-          products={products}
-          loading={loading}
-          error={error}
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
-          activeTab="produto"
-        />
-      </View>
-
-      <Modal
-        transparent
-        visible={isEstoqueOpen}
-        animationType="slide"
-        onRequestClose={() => setIsEstoqueOpen(false)}
-      >
-        <View className="flex-1 bg-background-primary">
-          <View className="flex-row items-center justify-between px-6 pt-6">
-            <Text className="text-lg font-semibold text-text-primary">
-              Painel de estoque
-            </Text>
-            <Pressable
-              onPress={() => setIsEstoqueOpen(false)}
-              className="rounded-full border border-divider px-3 py-1"
-            >
-              <Text className="text-sm text-text-secondary">Fechar</Text>
-            </Pressable>
-          </View>
-          <EstoqueScreen
+        {activeTab === "produto" ? (
+          <ListProducts
             products={products}
             loading={loading}
             error={error}
             onRefresh={handleRefresh}
             refreshing={refreshing}
-            onBack={() => setIsEstoqueOpen(false)}
           />
-        </View>
-      </Modal>
+        ) : (
+          <ListEstoque
+            products={products}
+            loading={loading}
+            error={error}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+          />
+        )}
+      </View>
     </View>
   );
 }

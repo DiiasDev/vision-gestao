@@ -13,19 +13,55 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import FormComponent from "../FormComponent/FormComponent";
 import { fieldsProduct } from "../../Fields/ProductsForm";
+import MovimentacaoEstoque, {
+  type Movimentacao,
+} from "../Estoque/MovimentacaoEstoque";
 import {
   ProductPayload,
   ProductsService,
   type Product,
 } from "../../services/Products.services";
 
-type ListProductsProps = {
+type ListEstoqueProps = {
   products: Product[];
   loading?: boolean;
   error?: string | null;
   onRefresh?: () => void;
   refreshing?: boolean;
 };
+
+const mockMovements: Movimentacao[] = [
+  {
+    id: "mv-101",
+    produto: "Cabo HDMI 2.1",
+    tipo: "saida",
+    quantidade: 3,
+    unidade: "un",
+    data: "Hoje, 14:12",
+    responsavel: "Gabriel (Vendas)",
+    motivo: "Venda balcão • Pedido #8291",
+  },
+  {
+    id: "mv-102",
+    produto: "Tela iPhone 13",
+    tipo: "entrada",
+    quantidade: 5,
+    unidade: "un",
+    data: "Hoje, 10:40",
+    responsavel: "Larissa (Compras)",
+    motivo: "Reposição automática • Fornecedor Prime",
+  },
+  {
+    id: "mv-103",
+    produto: "Película 3D",
+    tipo: "ajuste",
+    quantidade: 2,
+    unidade: "un",
+    data: "Ontem, 19:08",
+    responsavel: "Estoque",
+    motivo: "Ajuste após inventário rápido",
+  },
+];
 
 const parseNumber = (value: unknown) => {
   if (value === undefined || value === null || value === "") return null;
@@ -77,13 +113,13 @@ const getImageUri = (imagem?: string | null) => {
   return looksLikeBase64 ? `data:image/jpeg;base64,${trimmed}` : null;
 };
 
-export default function ListProducts({
+export default function ListEstoque({
   products,
   loading,
   error,
   onRefresh,
   refreshing,
-}: ListProductsProps) {
+}: ListEstoqueProps) {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "compact">("cards");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -137,14 +173,14 @@ export default function ListProducts({
               Catálogo
             </Text>
             <Text className="mt-2 text-2xl font-semibold text-text-primary">
-              Produtos disponíveis
+              Controle de estoque
             </Text>
             <Text className="mt-2 text-sm text-text-secondary">
-              Acompanhe preços, categorias e status de cada item.
+              Monitore níveis de estoque, custo e alertas de reposição.
             </Text>
           </View>
           <View className="h-12 w-12 items-center justify-center rounded-2xl bg-background-secondary">
-            <Ionicons name="cube-outline" size={22} color="#2563EB" />
+            <Ionicons name="layers-outline" size={22} color="#2563EB" />
           </View>
         </View>
 
@@ -205,9 +241,7 @@ export default function ListProducts({
           <Text className="text-sm font-semibold text-rose-700">
             Não foi possível carregar os produtos
           </Text>
-          <Text className="mt-1 text-sm text-rose-600">
-            {error}
-          </Text>
+          <Text className="mt-1 text-sm text-rose-600">{error}</Text>
         </View>
       ) : null}
 
@@ -230,13 +264,32 @@ export default function ListProducts({
           </Text>
         </View>
       ) : null}
+
+      <View className="mt-6 rounded-[26px] border border-divider bg-card-background p-5 shadow-lg">
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-sm font-semibold text-text-primary">
+              Movimentações recentes
+            </Text>
+            <Text className="mt-1 text-xs text-text-tertiary">
+              Dados mockados das últimas 24 horas
+            </Text>
+          </View>
+          <View className="h-10 w-10 items-center justify-center rounded-xl bg-background-secondary">
+            <Ionicons name="swap-vertical-outline" size={18} color="#2563EB" />
+          </View>
+        </View>
+        <View className="mt-4">
+          <MovimentacaoEstoque data={mockMovements} />
+        </View>
+      </View>
     </View>
   );
 
-  const renderProductCard = (item: Product) => {
+  const renderEstoqueCard = (item: Product) => {
     const stock = parseNumber(item.estoque);
     const isLowStock = stock !== null && stock <= 5;
-    const price = parseNumber(item.preco_venda);
+    const cost = parseNumber(item.custo);
     const statusLabel = item.ativo === false ? "Inativo" : "Ativo";
 
     const imageUri = getImageUri(item.imagem);
@@ -308,11 +361,11 @@ export default function ListProducts({
               </View>
             </View>
             <View className="items-end">
-              <Text className="text-sm font-semibold text-text-primary">
-                {formatCurrency(price ?? 0)}
-              </Text>
-              <Text className={`text-xs ${isLowStock ? "text-state-error" : "text-text-tertiary"}`}>
+              <Text className={`text-sm font-semibold ${isLowStock ? "text-state-error" : "text-text-primary"}`}>
                 {stock ?? 0} {item.unidade ?? "un"}
+              </Text>
+              <Text className="text-xs text-text-tertiary">
+                {formatCurrency(cost ?? 0)}
               </Text>
             </View>
             <View className="ml-3 flex-row items-center gap-2">
@@ -375,22 +428,40 @@ export default function ListProducts({
           </View>
         </View>
 
-        <View className="mt-4 flex-row items-center justify-between">
-          <View>
-            <Text className="text-xs text-text-secondary">Preço de venda</Text>
-            <Text className="mt-1 text-lg font-semibold text-text-primary">
-              {formatCurrency(price ?? 0)}
-            </Text>
-          </View>
-          <View className="items-end">
-            <Text className="text-xs text-text-secondary">Estoque</Text>
+        <View className="mt-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xs text-text-secondary">Nível de estoque</Text>
             <Text
-              className={`mt-1 text-lg font-semibold ${
-                isLowStock ? "text-state-error" : "text-text-primary"
+              className={`text-xs font-semibold ${
+                isLowStock ? "text-state-error" : "text-state-success"
               }`}
             >
-              {stock ?? 0} {item.unidade ?? "un"}
+              {isLowStock ? "Reposição urgente" : "Estoque saudável"}
             </Text>
+          </View>
+          <View className="mt-2 h-2 overflow-hidden rounded-full bg-background-secondary">
+            <View
+              className={`h-2 ${
+                isLowStock ? "bg-state-error" : "bg-state-success"
+              }`}
+              style={{
+                width: `${Math.min(100, Math.max(12, (stock ?? 0) * 5))}%`,
+              }}
+            />
+          </View>
+          <View className="mt-3 flex-row items-center justify-between">
+            <View>
+              <Text className="text-xs text-text-secondary">Quantidade</Text>
+              <Text className="mt-1 text-base font-semibold text-text-primary">
+                {stock ?? 0} {item.unidade ?? "un"}
+              </Text>
+            </View>
+            <View className="items-end">
+              <Text className="text-xs text-text-secondary">Custo médio</Text>
+              <Text className="mt-1 text-base font-semibold text-text-primary">
+                {formatCurrency(cost ?? 0)}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -432,7 +503,7 @@ export default function ListProducts({
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator color="#2563EB" />
         <Text className="mt-2 text-sm text-text-secondary">
-          Carregando produtos...
+          Carregando estoque...
         </Text>
       </View>
     );
@@ -445,7 +516,7 @@ export default function ListProducts({
         keyExtractor={(item, index) =>
           item.id?.toString() ?? item.sku ?? item.codigo ?? `product-${index}`
         }
-        renderItem={({ item }) => renderProductCard(item)}
+        renderItem={({ item }) => renderEstoqueCard(item)}
         ListHeaderComponent={listHeader}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
@@ -454,13 +525,13 @@ export default function ListProducts({
         ListEmptyComponent={
           <View className="rounded-[26px] border border-divider bg-card-background p-6">
             <View className="h-12 w-12 items-center justify-center rounded-2xl bg-background-secondary">
-              <Ionicons name="cube-outline" size={22} color="#9CA3AF" />
+              <Ionicons name="layers-outline" size={22} color="#9CA3AF" />
             </View>
             <Text className="mt-4 text-lg font-semibold text-text-primary">
-              Nenhum produto encontrado
+              Nenhum item de estoque encontrado
             </Text>
             <Text className="mt-2 text-sm text-text-secondary">
-              Cadastre novos produtos ou refine sua busca para exibir resultados.
+              Cadastre produtos ou refine sua busca para exibir resultados.
             </Text>
           </View>
         }
