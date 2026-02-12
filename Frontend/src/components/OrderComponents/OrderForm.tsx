@@ -117,6 +117,8 @@ export default function OrderForm({ onBack, initialData, onSaved }: OrderFormPro
     undefined
   );
   const [manualService, setManualService] = useState<string>("");
+  const [manualServiceValue, setManualServiceValue] = useState<string>("");
+  const [isServiceValueLocked, setIsServiceValueLocked] = useState<boolean>(true);
   const [manualEstimate, setManualEstimate] = useState<string>("");
   const [isEstimateLocked, setIsEstimateLocked] = useState<boolean>(true);
 
@@ -163,6 +165,14 @@ export default function OrderForm({ onBack, initialData, onSaved }: OrderFormPro
     } else {
       setSelectedServiceKey(undefined);
       setManualService(initialData.servico_descricao ?? "");
+    }
+
+    if (
+      initialData.valor_servico !== null &&
+      initialData.valor_servico !== undefined
+    ) {
+      setManualServiceValue(String(initialData.valor_servico));
+      setIsServiceValueLocked(false);
     }
 
     if (initialData.valor_total !== null && initialData.valor_total !== undefined) {
@@ -247,6 +257,8 @@ export default function OrderForm({ onBack, initialData, onSaved }: OrderFormPro
     : undefined;
 
   const servicePrice = selectedService ? toNumber(selectedService.preco) : 0;
+  const serviceValue =
+    manualServiceValue.trim() !== "" ? toNumber(manualServiceValue) : 0;
 
   const itemsTotal = items.reduce((acc, item) => {
     const quantity = toNumber(item.quantity);
@@ -254,7 +266,12 @@ export default function OrderForm({ onBack, initialData, onSaved }: OrderFormPro
     return acc + quantity * price;
   }, 0);
 
-  const estimatedTotal = itemsTotal + servicePrice;
+  const estimatedTotal = itemsTotal + serviceValue;
+
+  useEffect(() => {
+    if (!isServiceValueLocked) return;
+    setManualServiceValue(selectedServiceKey ? String(servicePrice) : "");
+  }, [isServiceValueLocked, selectedServiceKey, servicePrice]);
 
   useEffect(() => {
     if (!isEstimateLocked) return;
@@ -349,9 +366,12 @@ export default function OrderForm({ onBack, initialData, onSaved }: OrderFormPro
         client_contact: contact || null,
         equipment: equipment || null,
         problem: problem || null,
-        service_id: selectedService?.id ?? null,
+        service_id:
+          selectedService?.id !== undefined && selectedService?.id !== null
+            ? String(selectedService.id)
+            : null,
         service_description: serviceDescription,
-        service_value: servicePrice,
+        service_value: serviceValue,
         items: items.map((item) => ({
           product_id: item.productId ?? null,
           product_name: item.productId
@@ -515,6 +535,7 @@ export default function OrderForm({ onBack, initialData, onSaved }: OrderFormPro
                         ],
                         (value) => {
                           setSelectedServiceKey(value || undefined);
+                          setIsServiceValueLocked(true);
                         }
                       )
                     }
@@ -538,9 +559,47 @@ export default function OrderForm({ onBack, initialData, onSaved }: OrderFormPro
                   </Pressable>
                   {selectedService ? (
                     <Text className="text-xs text-text-tertiary">
-                      Valor do serviço: {formatCurrency(servicePrice)}
+                      Preço cadastrado: {formatCurrency(servicePrice)}
                     </Text>
                   ) : null}
+                </View>
+                <View className="gap-2">
+                  <Text className="text-sm text-text-secondary">
+                    Valor do serviço
+                  </Text>
+                  <TextInput
+                    className="rounded-xl border border-divider bg-background-secondary px-4 py-3 text-text-primary"
+                    placeholder="Ex.: 180.00"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                    value={manualServiceValue}
+                    onChangeText={(text) => {
+                      setIsServiceValueLocked(false);
+                      setManualServiceValue(text);
+                    }}
+                  />
+                  {selectedService ? (
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-xs text-text-tertiary">
+                        Valor usado no orçamento: {formatCurrency(serviceValue)}
+                      </Text>
+                      <Pressable
+                        onPress={() => {
+                          setIsServiceValueLocked(true);
+                          setManualServiceValue(String(servicePrice));
+                        }}
+                        className="rounded-full border border-divider px-3 py-1"
+                      >
+                        <Text className="text-xs text-text-secondary">
+                          Usar preço cadastrado
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Text className="text-xs text-text-tertiary">
+                      Informe o valor do serviço, mesmo sem serviço cadastrado.
+                    </Text>
+                  )}
                 </View>
                 {showManualServiceField ? (
                   <View className="gap-2">

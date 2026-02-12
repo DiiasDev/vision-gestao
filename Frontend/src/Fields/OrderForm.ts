@@ -45,6 +45,13 @@ export const fieldsOrder: Field[] = [
     section: "Serviço",
   },
   {
+    fieldname: "valor_servico",
+    label: "Valor do serviço",
+    fieldtype: "number",
+    placeholder: "Ex.: 180.00",
+    section: "Serviço",
+  },
+  {
     fieldname: "valor_estimado",
     label: "Valor",
     fieldtype: "number",

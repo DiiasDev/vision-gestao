@@ -413,19 +413,48 @@ export class GraphicsServices {
       const normalizeValue = (raw: any) => {
         if (raw === undefined || raw === null || raw === "") return 0;
         if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
-        const normalized = String(raw)
-          .trim()
-          .replace(/\./g, "")
-          .replace(",", ".");
+        const text = String(raw).trim();
+        if (!text) return 0;
+        const hasComma = text.includes(",");
+        const normalized = hasComma
+          ? text.replace(/\./g, "").replace(",", ".")
+          : text;
         const parsed = Number(normalized);
         return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const resolveItemCost = (item: any) => {
+        const totalCost = normalizeValue(item?.total_custo_item);
+        if (totalCost > 0) return totalCost;
+        const unitCost = normalizeValue(item?.custo_unitario);
+        const quantity = normalizeValue(item?.quantidade);
+        return unitCost * quantity;
+      };
+
+      const resolveCost = (service: any) => {
+        const totalCost = normalizeValue(service?.custo_total);
+        if (totalCost > 0) return totalCost;
+
+        const serviceCost = normalizeValue(service?.custo_servico);
+        const productsCost = normalizeValue(service?.custo_produtos);
+        const combined = serviceCost + productsCost;
+        if (combined > 0) return combined;
+
+        if (Array.isArray(service?.items) && service.items.length) {
+          return service.items.reduce(
+            (acc: number, item: any) => acc + resolveItemCost(item),
+            0,
+          );
+        }
+
+        return 0;
       };
 
       const agrupado = osFiltered.reduce((acc: any, item: any) => {
         const servicoId = String(item.servico_id ?? "outros");
         const servicoNome = String(item.servico_nome ?? "Outros");
         const valor = normalizeValue(item.valor_total ?? item.valor_servico);
-        const custo = normalizeValue(item.custo_total ?? item.custo_servico);
+        const custo = resolveCost(item);
 
         if (!acc[servicoId]) {
           acc[servicoId] = {

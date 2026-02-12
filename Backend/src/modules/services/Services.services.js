@@ -6,16 +6,24 @@ import { fileURLToPath } from "node:url";
 import { ProductsService } from "../products/products.service.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const defaultImagePath = path.resolve(__dirname, "../../img/serviceImg.png");
+const defaultImageCandidates = [
+    path.resolve(__dirname, "../../img/serviceImg.png"),
+    path.resolve(process.cwd(), "src/img/serviceImg.png"),
+    path.resolve(process.cwd(), "dist/img/serviceImg.png"),
+];
 const getDefaultServiceImage = () => {
-    try {
-        const file = fs.readFileSync(defaultImagePath);
-        return `data:image/png;base64,${file.toString("base64")}`;
+    for (const imagePath of defaultImageCandidates) {
+        try {
+            if (!fs.existsSync(imagePath))
+                continue;
+            const file = fs.readFileSync(imagePath);
+            return `data:image/png;base64,${file.toString("base64")}`;
+        }
+        catch (error) {
+            console.error("Erro ao carregar imagem padrão de serviço:", imagePath, error);
+        }
     }
-    catch (error) {
-        console.error("Erro ao carregar imagem padrão de serviço:", error);
-        return null;
-    }
+    return null;
 };
 const defaultServiceImage = getDefaultServiceImage();
 const normalizeNumber = (value) => {
@@ -93,6 +101,7 @@ export class ServicesService {
             const pool = DB.connect();
             const { nome_servico, categoria, preco, prazo, descricao, imagem, status, } = novo_servico;
             const normalizedImage = imagem && String(imagem).trim() ? imagem : defaultServiceImage;
+            const normalizedStatus = normalizeBoolean(status) ?? true;
             const query = `INSERT INTO servicos ( 
       nome_servico,
         categoria,
@@ -109,11 +118,11 @@ export class ServicesService {
                 prazo,
                 descricao,
                 normalizedImage,
-                status,
+                normalizedStatus,
             ];
             const result = await pool.query(query, values);
             return {
-                sucess: true,
+                success: true,
                 message: "Serviço registrado com sucesso",
                 novo_servico: result.rows[0] ?? [],
             };

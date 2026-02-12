@@ -100,6 +100,16 @@ export class DB {
           atualizado_em TIMESTAMP NOT NULL DEFAULT NOW()
         );
 
+        ALTER TABLE orcamentos
+          ADD COLUMN IF NOT EXISTS valor_servico NUMERIC(14,2);
+        UPDATE orcamentos
+          SET valor_servico = 0
+          WHERE valor_servico IS NULL;
+        ALTER TABLE orcamentos
+          ALTER COLUMN valor_servico SET DEFAULT 0;
+        ALTER TABLE orcamentos
+          ALTER COLUMN valor_servico SET NOT NULL;
+
         CREATE TABLE IF NOT EXISTS orcamentos_itens (
           id BIGSERIAL PRIMARY KEY,
           orcamento_id UUID NOT NULL REFERENCES orcamentos(id) ON DELETE CASCADE,

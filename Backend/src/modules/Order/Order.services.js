@@ -84,23 +84,30 @@ export class OrderService {
                 ? payload.items.map(buildItemPayload)
                 : [];
             const itemsTotal = items.reduce((acc, item) => acc + item.total, 0);
-            const serviceValue = normalizeNumber(payload.service_value);
-            const calculatedTotal = serviceValue + itemsTotal;
-            const estimatedValue = payload.estimated_value !== null &&
-                payload.estimated_value !== undefined
-                ? normalizeNumber(payload.estimated_value)
-                : calculatedTotal;
+            const shouldUseServiceFallbackPrice = (payload.service_value === null ||
+                payload.service_value === undefined ||
+                payload.service_value === "") &&
+                !!payload.service_id;
+            let serviceValue = normalizeNumber(payload.service_value);
             await pool.query("BEGIN");
             let serviceDescription = normalizeText(payload.service_description);
-            if (!serviceDescription && payload.service_id) {
+            if ((!serviceDescription || shouldUseServiceFallbackPrice) && payload.service_id) {
                 try {
-                    const serviceResult = await pool.query("SELECT nome_servico FROM servicos WHERE id = $1", [payload.service_id]);
+                    const serviceResult = await pool.query("SELECT nome_servico, preco FROM servicos WHERE id = $1", [payload.service_id]);
                     serviceDescription = serviceResult.rows[0]?.nome_servico ?? null;
+                    if (shouldUseServiceFallbackPrice) {
+                        serviceValue = normalizeNumber(serviceResult.rows[0]?.preco);
+                    }
                 }
                 catch (error) {
                     console.error("Erro ao buscar nome do serviço:", error);
                 }
             }
+            const calculatedTotal = serviceValue + itemsTotal;
+            const estimatedValue = payload.estimated_value !== null &&
+                payload.estimated_value !== undefined
+                ? normalizeNumber(payload.estimated_value)
+                : calculatedTotal;
             const insertOrder = `
         INSERT INTO orcamentos (
           cliente_id,
@@ -233,24 +240,31 @@ export class OrderService {
                 ? payload.items.map(buildItemPayload)
                 : [];
             const itemsTotal = items.reduce((acc, item) => acc + item.total, 0);
-            const serviceValue = normalizeNumber(payload.service_value);
-            const calculatedTotal = serviceValue + itemsTotal;
-            const estimatedValue = payload.estimated_value !== null &&
-                payload.estimated_value !== undefined
-                ? normalizeNumber(payload.estimated_value)
-                : calculatedTotal;
+            const shouldUseServiceFallbackPrice = (payload.service_value === null ||
+                payload.service_value === undefined ||
+                payload.service_value === "") &&
+                !!payload.service_id;
+            let serviceValue = normalizeNumber(payload.service_value);
             await pool.query("BEGIN");
             let updateServiceDescription = normalizeText(payload.service_description);
-            if (!updateServiceDescription && payload.service_id) {
+            if ((!updateServiceDescription || shouldUseServiceFallbackPrice) && payload.service_id) {
                 try {
-                    const serviceResult = await pool.query("SELECT nome_servico FROM servicos WHERE id = $1", [payload.service_id]);
+                    const serviceResult = await pool.query("SELECT nome_servico, preco FROM servicos WHERE id = $1", [payload.service_id]);
                     updateServiceDescription =
                         serviceResult.rows[0]?.nome_servico ?? null;
+                    if (shouldUseServiceFallbackPrice) {
+                        serviceValue = normalizeNumber(serviceResult.rows[0]?.preco);
+                    }
                 }
                 catch (error) {
                     console.error("Erro ao buscar nome do serviço:", error);
                 }
             }
+            const calculatedTotal = serviceValue + itemsTotal;
+            const estimatedValue = payload.estimated_value !== null &&
+                payload.estimated_value !== undefined
+                ? normalizeNumber(payload.estimated_value)
+                : calculatedTotal;
             const updateOrder = `
         UPDATE orcamentos
         SET

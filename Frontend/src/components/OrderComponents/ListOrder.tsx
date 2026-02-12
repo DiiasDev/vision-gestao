@@ -440,6 +440,9 @@ export default function ListOrder() {
                 <View className="mt-4 flex-row items-center justify-between">
                   <View>
                     <Text className="text-xs text-text-secondary">
+                      Serviço: {formatCurrencyBR(order.valor_servico ?? 0)}
+                    </Text>
+                    <Text className="text-xs text-text-secondary">
                       Valor total
                     </Text>
                     <Text className="mt-1 text-lg font-semibold text-text-primary">

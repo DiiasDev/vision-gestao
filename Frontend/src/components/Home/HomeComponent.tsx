@@ -33,8 +33,9 @@ export default function HomeComponent({ userName }: HomeComponentProps) {
   const [movementError, setMovementError] = useState<string | null>(null);
   const [infoTopic, setInfoTopic] = useState<HomeInfoTopic | null>(null);
   const [dateRange, setDateRange] = useState<DateRangeValue>(() => {
-    const endDate = new Date();
-    const startDate = new Date(endDate.getFullYear(), 0, 1);
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), 0, 1);
+    const endDate = new Date(now.getFullYear(), 11, 31);
     return {
       preset: "custom",
       startDate,

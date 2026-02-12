@@ -136,11 +136,10 @@ export function CustoXLucro({
       : item.servicoNome,
   );
   const custos = aggregated.map((item) =>
-    Number.isFinite(item.totalCusto) ? item.totalCusto : 0,
+    normalizeValue(item.totalCusto),
   );
   const vendas = aggregated.map((item) => {
-    const value = item.totalVenda ?? item.totalValor ?? 0;
-    return Number.isFinite(value) ? value : 0;
+    return normalizeValue(item.totalVenda ?? item.totalValor ?? 0);
   });
   const chartHeight = 240;
 
@@ -325,11 +324,7 @@ export function CustoXLucro({
                     ? "Custos"
                     : matchesVenda
                       ? "Vendas"
-                      : point.datasetIndex === 0
-                        ? "Custos"
-                        : point.datasetIndex === 1
-                          ? "Vendas"
-                          : "Valor";
+                      : "Valor";
                 const item = aggregated[point.index];
                 const rawLabel = item?.servicoNome ?? "";
                 const lucroValue = item?.lucroTotal ?? 0;
