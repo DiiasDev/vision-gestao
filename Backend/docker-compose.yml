@@ -7,15 +7,32 @@ services:
     ports:
       - "3333:3333"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
     environment:
-      - PORT=3333
-      - HOST=0.0.0.0
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_DATABASE=vision_gestao
+      PORT: ${PORT:-3333}
+      HOST: ${HOST:-0.0.0.0}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_DATABASE: ${DB_DATABASE:-vision_gestao}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      NODE_ENV: ${NODE_ENV:-production}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3333/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: always
 
   db:
@@ -27,6 +44,12 @@ services:
       POSTGRES_DB: vision_gestao
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vision_gestao"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: always
 
 volumes:

@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { ENV } from "../config/env.js";
 
 export class DB {
   private static pool: Pool;
@@ -7,11 +8,11 @@ export class DB {
   static connect(): Pool {
     if (!DB.pool) {
       DB.pool = new Pool({
-        host: process.env.DB_HOST,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_DATABASE,
-        port: Number(process.env.DB_PORT ?? 5432),
+        host: ENV.db.host,
+        user: ENV.db.user,
+        password: ENV.db.password,
+        database: ENV.db.database,
+        port: ENV.db.port,
         max: 10,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
@@ -204,5 +205,20 @@ export class DB {
       DB.initPromise = null;
       throw error;
     }
+  }
+
+  static async healthCheck(): Promise<boolean> {
+    try {
+      const pool = DB.connect();
+      await pool.query("SELECT 1");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  static async close(): Promise<void> {
+    if (!DB.pool) return;
+    await DB.pool.end();
   }
 }

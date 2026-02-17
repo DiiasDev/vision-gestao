@@ -1,23 +1,19 @@
-# Imagem base
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
-# Diretório de trabalho dentro do container
 WORKDIR /app
-
-# Copia arquivos de dependência primeiro (melhora cache)
 COPY package*.json ./
-
-# Instala dependências
-RUN npm install
-
-# Copia o restante do código
+RUN npm ci
 COPY . .
-
-# Builda o TypeScript
 RUN npm run build
 
-# Expõe a porta da API
-EXPOSE 3333
+FROM node:20-alpine AS runner
 
-# Comando para rodar em produção
+ENV NODE_ENV=production
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY --from=builder /app/dist ./dist
+
+EXPOSE 3333
 CMD ["node", "dist/server.js"]
