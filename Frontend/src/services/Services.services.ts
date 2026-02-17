@@ -1,5 +1,5 @@
-import { Platform } from "react-native";
 import type { ServicesTypes } from "../../../Backend/src/types/Services/Services.types";
+import { getApiBaseUrl } from "../config/api";
 
 export type ServicePayload = {
   nome: string;
@@ -48,10 +48,6 @@ export type ServiceRealized = {
   criado_em?: string | null;
   items?: ServiceRealizedItem[];
 };
-
-const getBaseUrl = () =>
-  process.env.EXPO_PUBLIC_API_URL ??
-  (Platform.OS === "ios" ? "http://localhost:3333" : "http://10.0.2.2:3333");
 
 const toNumberOrNull = (value: number | string | undefined) => {
   if (value === undefined || value === null || value === "") return null;
@@ -112,7 +108,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services/realized`, {
+      const response = await fetch(`${getApiBaseUrl()}/services/realized`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -166,7 +162,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services`, {
+      const response = await fetch(`${getApiBaseUrl()}/services`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -217,7 +213,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services/realized`, {
+      const response = await fetch(`${getApiBaseUrl()}/services/realized`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -285,7 +281,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services/realized/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/services/realized/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -339,7 +335,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services/realized/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/services/realized/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -385,7 +381,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services/realized/${id}/settle`, {
+      const response = await fetch(`${getApiBaseUrl()}/services/realized/${id}/settle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -429,7 +425,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services`, {
+      const response = await fetch(`${getApiBaseUrl()}/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -484,7 +480,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/services/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -537,7 +533,7 @@ export class ServicesService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/services/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/services/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,

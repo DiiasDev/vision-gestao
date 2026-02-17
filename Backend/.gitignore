@@ -12,6 +12,8 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+!.env.development.example
+!.env.production.example
 
 # TypeScript
 *.tsbuildinfo
@@ -19,6 +21,12 @@ yarn-error.log*
 # Build output
 dist/
 build/
+
+# Local compile artifacts accidentally generated inside src/
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
 
 # OS files
 .DS_Store
