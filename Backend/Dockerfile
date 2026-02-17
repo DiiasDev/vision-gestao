@@ -16,4 +16,4 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3333
-CMD ["node", "dist/server.js"]
+CMD ["npm", "run", "start:prod"]

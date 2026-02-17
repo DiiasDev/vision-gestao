@@ -7,7 +7,13 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "postbuild": "mkdir -p dist/database/migrations && cp src/database/migrations/*.sql dist/database/migrations/",
+    "start": "node dist/server.js",
+    "migrate": "DOTENV_CONFIG_PATH=.env.development tsx src/scripts/migrate.ts",
+    "migrate:status": "DOTENV_CONFIG_PATH=.env.development tsx src/scripts/migrationStatus.ts",
+    "migrate:prod": "DOTENV_CONFIG_PATH=.env.production tsx src/scripts/migrate.ts",
+    "migrate:status:prod": "DOTENV_CONFIG_PATH=.env.production tsx src/scripts/migrationStatus.ts",
+    "start:prod": "node dist/scripts/migrate.js && node dist/server.js"
   },
   "keywords": [],
   "author": "",
