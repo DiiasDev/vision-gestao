@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { getApiBaseUrl } from "../config/api";
 
 export type AuthTypes = { 
     email: string, 
@@ -7,16 +7,12 @@ export type AuthTypes = {
 }
 
 export class Auth{
-    private static baseUrl =
-      process.env.EXPO_PUBLIC_API_URL ??
-      (Platform.OS === "ios" ? "http://localhost:3333" : "http://10.0.2.2:3333");
-
     static async login({ email, password }: AuthTypes){
         try{
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-            const response = await fetch(`${Auth.baseUrl}/login`, {
+            const response = await fetch(`${getApiBaseUrl()}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, senha: password }),

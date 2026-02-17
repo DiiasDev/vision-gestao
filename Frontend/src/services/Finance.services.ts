@@ -3,17 +3,13 @@ import type {
   FinanceMovement,
   FinanceMovementStatus,
 } from "../../../Backend/src/types/Finance/FinanceTypes.types";
-import { Platform } from "react-native";
+import { getApiBaseUrl } from "../config/api";
 
 export type FinanceMovementView = FinanceMovement & {
   dateISO: string;
   dateLabel: string;
   channel: NonNullable<FinanceMovement["channel"]>;
 };
-
-const getBaseUrl = () =>
-  process.env.EXPO_PUBLIC_API_URL ??
-  (Platform.OS === "ios" ? "http://localhost:3333" : "http://10.0.2.2:3333");
 
 const buildRangeStart = (range: FinanceFilter["range"]) => {
   if (range === "custom") return null;
@@ -96,7 +92,7 @@ export class FinanceService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/finance/movements`, {
+      const response = await fetch(`${getApiBaseUrl()}/finance/movements`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -151,7 +147,7 @@ export class FinanceService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/finance/movements/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/finance/movements/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -206,7 +202,7 @@ export class FinanceService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/finance/movements/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/finance/movements/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -248,7 +244,7 @@ export class FinanceService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/finance/movements`, {
+      const response = await fetch(`${getApiBaseUrl()}/finance/movements`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,

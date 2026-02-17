@@ -1,5 +1,5 @@
 import type { clientsTypes } from "../../../Backend/src/types/Clients/ClientsTypes";
-import { Platform } from "react-native";
+import { getApiBaseUrl } from "../config/api";
 
 export type ClientPayload = {
   nome: string;
@@ -15,17 +15,13 @@ export type ClientPayload = {
 
 export type Client = clientsTypes & { id?: string };
 
-const getBaseUrl = () =>
-  process.env.EXPO_PUBLIC_API_URL ??
-  (Platform.OS === "ios" ? "http://localhost:3333" : "http://10.0.2.2:3333");
-
 export class ClienteService {
   static async createClient(payload: ClientPayload) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/clients`, {
+      const response = await fetch(`${getApiBaseUrl()}/clients`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -74,7 +70,7 @@ export class ClienteService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/clients`, {
+      const response = await fetch(`${getApiBaseUrl()}/clients`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -113,7 +109,7 @@ export class ClienteService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/clients/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/clients/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -162,7 +158,7 @@ export class ClienteService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/clients/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/clients/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,

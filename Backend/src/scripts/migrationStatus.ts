@@ -3,9 +3,11 @@ import { DB } from "../database/conn.js";
 import { migrationStatus } from "../database/migrations/runMigrations.js";
 
 async function main() {
+  const pool = DB.connect();
+  const client = await pool.connect();
   try {
     await DB.init();
-    const status = await migrationStatus();
+    const status = await migrationStatus(client);
     if (status.length === 0) {
       console.log("Nenhuma migration encontrada.");
       return;
@@ -19,6 +21,7 @@ async function main() {
       console.log(`[${entry.status}] ${entry.fileName}${suffix}`);
     }
   } finally {
+    client.release();
     await DB.close();
   }
 }

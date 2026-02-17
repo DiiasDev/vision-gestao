@@ -26,13 +26,18 @@ const nodeEnvInput = process.env.NODE_ENV ?? "development";
 const nodeEnv = allowedNodeEnvs.includes(nodeEnvInput as (typeof allowedNodeEnvs)[number])
   ? (nodeEnvInput as (typeof allowedNodeEnvs)[number])
   : "development";
+const corsOrigin = process.env.CORS_ORIGIN ?? "*";
+
+if (nodeEnv === "production" && corsOrigin.trim() === "*") {
+  throw new Error("CORS_ORIGIN cannot be '*' in production");
+}
 
 export const ENV = {
   nodeEnv,
   isProduction: nodeEnv === "production",
   host: process.env.HOST ?? "0.0.0.0",
   port: parsedPort,
-  corsOrigin: process.env.CORS_ORIGIN ?? "*",
+  corsOrigin,
   db: {
     host: process.env.DB_HOST as string,
     port: parsedDbPort,

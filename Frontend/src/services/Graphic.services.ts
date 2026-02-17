@@ -1,8 +1,4 @@
-import { Platform } from "react-native";
-
-const getBaseUrl = () =>
-  process.env.EXPO_PUBLIC_API_URL ??
-  (Platform.OS === "ios" ? "http://localhost:3333" : "http://10.0.2.2:3333");
+import { getApiBaseUrl } from "../config/api";
 
 const formatDateParam = (date: Date | string) => {
   if (typeof date === "string") return date;
@@ -160,7 +156,7 @@ export class GraphicService {
 
       const rangeQuery = buildRangeQuery(range);
       const response = await fetch(
-        `${getBaseUrl()}/graphics/painel?months=${months}${rangeQuery}`,
+        `${getApiBaseUrl()}/graphics/painel?months=${months}${rangeQuery}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -217,7 +213,7 @@ export class GraphicService {
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const rangeQuery = buildRangeQuery(range);
-      const response = await fetch(`${getBaseUrl()}/graphics/cards?${rangeQuery.slice(1)}`, {
+      const response = await fetch(`${getApiBaseUrl()}/graphics/cards?${rangeQuery.slice(1)}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -288,7 +284,7 @@ export class GraphicService {
 
       const rangeQuery = buildRangeQuery(range);
       const response = await fetch(
-        `${getBaseUrl()}/graphics/custo-x-lucro?${rangeQuery.slice(1)}`,
+        `${getApiBaseUrl()}/graphics/custo-x-lucro?${rangeQuery.slice(1)}`,
         {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -364,7 +360,7 @@ export class GraphicService {
 
       const rangeQuery = buildRangeQuery(range);
       const response = await fetch(
-        `${getBaseUrl()}/graphics/status-os?${rangeQuery.slice(1)}`,
+        `${getApiBaseUrl()}/graphics/status-os?${rangeQuery.slice(1)}`,
         {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -419,7 +415,7 @@ export class GraphicService {
 
       const rangeQuery = buildRangeQuery(range);
       const response = await fetch(
-        `${getBaseUrl()}/graphics/servicos-por-categoria?${rangeQuery.slice(1)}`,
+        `${getApiBaseUrl()}/graphics/servicos-por-categoria?${rangeQuery.slice(1)}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -474,7 +470,7 @@ export class GraphicService {
       const rangeQuery = buildRangeQuery(range);
 
       const response = await fetch(
-        `${getBaseUrl()}/graphics/estoque-critico?${rangeQuery.slice(1)}`,
+        `${getApiBaseUrl()}/graphics/estoque-critico?${rangeQuery.slice(1)}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -540,7 +536,7 @@ export class GraphicService {
 
       const rangeQuery = buildRangeQuery(range);
       const response = await fetch(
-        `${getBaseUrl()}/graphics/ranking-produtos?${rangeQuery.slice(1)}`,
+        `${getApiBaseUrl()}/graphics/ranking-produtos?${rangeQuery.slice(1)}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },

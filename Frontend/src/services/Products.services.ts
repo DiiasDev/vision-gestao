@@ -1,5 +1,5 @@
-import { Platform } from "react-native";
 import type { ProductsTypes } from "../../../Backend/src/types/Products/Products.types";
+import { getApiBaseUrl } from "../config/api";
 
 export type ProductPayload = {
   codigo?: string;
@@ -68,16 +68,12 @@ const normalizeImageData = (imagem?: string | null) => {
 };
 
 export class ProductsService {
-  private static baseUrl =
-    process.env.EXPO_PUBLIC_API_URL ??
-    (Platform.OS === "ios" ? "http://localhost:3333" : "http://10.0.2.2:3333");
-
   static async createProduct(payload: ProductPayload) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${ProductsService.baseUrl}/products`, {
+      const response = await fetch(`${getApiBaseUrl()}/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -128,7 +124,7 @@ export class ProductsService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${ProductsService.baseUrl}/products`, {
+      const response = await fetch(`${getApiBaseUrl()}/products`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -172,7 +168,7 @@ export class ProductsService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${ProductsService.baseUrl}/products/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/products/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -223,7 +219,7 @@ export class ProductsService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${ProductsService.baseUrl}/products/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/products/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -261,7 +257,7 @@ export class ProductsService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${ProductsService.baseUrl}/products/stock/move`, {
+      const response = await fetch(`${getApiBaseUrl()}/products/stock/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -315,7 +311,7 @@ export class ProductsService {
       }
 
       const response = await fetch(
-        `${ProductsService.baseUrl}/products/stock/movements${
+        `${getApiBaseUrl()}/products/stock/movements${
           query.toString() ? `?${query.toString()}` : ""
         }`,
         {

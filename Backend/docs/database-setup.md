@@ -10,6 +10,7 @@
 ## 2) Migrations versionadas
 
 As migrations ficam em `src/database/migrations/*.sql` e sao controladas pela tabela `schema_migrations`.
+O runner aplica lock transacional para evitar corrida quando mais de uma instancia sobe ao mesmo tempo.
 
 Comandos:
 
@@ -60,3 +61,12 @@ Recomendacao:
 
 - Salvar backup em disco/volume fora do container.
 - Replicar backup para outro destino (bucket/servidor secundario).
+
+## 4) Checklist de producao
+
+- Preencher `.env.production` com valores reais (sem placeholders).
+- Definir `CORS_ORIGIN` com o dominio real do frontend (em producao nao pode ser `*`).
+- Subir API com `docker compose -f docker-compose.prod.yml up -d --build`.
+- Opcional: ajustar `API_BIND_IP` e `API_PORT` no host para publicar a API.
+- Validar healthcheck em `GET /health`.
+- Configurar reverse proxy (Nginx/Caddy) com HTTPS na frente da API.

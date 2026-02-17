@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { getApiBaseUrl } from "../config/api";
 
 export type OrderItemPayload = {
   product_id?: string | null;
@@ -52,17 +52,13 @@ export type Order = {
   items?: OrderItem[];
 };
 
-const getBaseUrl = () =>
-  process.env.EXPO_PUBLIC_API_URL ??
-  (Platform.OS === "ios" ? "http://localhost:3333" : "http://10.0.2.2:3333");
-
 export class OrderService {
   static async createOrder(payload: OrderPayload) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/orders`, {
+      const response = await fetch(`${getApiBaseUrl()}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -116,7 +112,7 @@ export class OrderService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/orders`, {
+      const response = await fetch(`${getApiBaseUrl()}/orders`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -161,7 +157,7 @@ export class OrderService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/orders/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/orders/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -215,7 +211,7 @@ export class OrderService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/orders/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/orders/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -254,7 +250,7 @@ export class OrderService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/orders/${id}/realize`, {
+      const response = await fetch(`${getApiBaseUrl()}/orders/${id}/realize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -293,7 +289,7 @@ export class OrderService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(`${getBaseUrl()}/orders/${id}/export`, {
+      const response = await fetch(`${getApiBaseUrl()}/orders/${id}/export`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
